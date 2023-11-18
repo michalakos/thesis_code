@@ -258,3 +258,4 @@ class Env:
     plt.xlim(-self.x_length/2, self.x_length/2)
     plt.ylim(-self.y_length/2, self.y_length/2)
     plt.legend()
+    plt.show()

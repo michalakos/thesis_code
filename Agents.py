@@ -1,9 +1,9 @@
 # code inspired by https://github.com/ChenglongChen/pytorch-DRL
 K = 4
 
-from tensorflow.python.keras.layers import Dense, InputLayer, Concatenate
-from tensorflow.python.keras import Model
-from tensorflow.python.keras.initializers import RandomNormal
+from keras.layers import Dense, InputLayer, Concatenate
+from keras import Model
+from keras.initializers import RandomNormal
 
 import random
 from collections import namedtuple
@@ -28,7 +28,7 @@ class ActorNetwork(Model):
                           kernel_initializer=initializer)
     self.hidden_2 = Dense(300, activation='relu',
                           kernel_initializer=initializer)
-    self.output = Dense(action_size, activation='sigmoid',
+    self.out_layer = Dense(action_size, activation='sigmoid',
                         kernel_initializer=initializer)
 
 
@@ -36,12 +36,7 @@ class ActorNetwork(Model):
     x = self.input_layer(state)
     x = self.hidden_1(x)
     x = self.hidden_2(x)
-    return self.output(x)
-
-
-  def select_action(self, state): #TODO
-    action = 0
-    return action
+    return self.out_layer(x)
 
 
 # the critic network receives the global state as an input and
@@ -61,7 +56,7 @@ class CriticNetwork(Model):
     self.concat = Concatenate()
     self.hidden_2 = Dense(300, activation='relu',
                           kernel_initializer=initializer)
-    self.output = Dense(1, kernel_initializer=initializer)
+    self.out_layer = Dense(1, kernel_initializer=initializer)
 
   def call(self, state, actions):
     x = self.input_layer(state)
@@ -69,7 +64,7 @@ class CriticNetwork(Model):
     acts = self.action_layer(actions)
     x = self.concat([x, acts])
     x = self.hidden_2(x)
-    return self.output(x)
+    return self.out_layer(x)
 
 
 # replay buffer holds the total experience from all users for each timestep

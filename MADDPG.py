@@ -1,5 +1,5 @@
-from tensorflow.python.keras.optimizers import Adam
 import tensorflow as tf
+from keras.optimizers import Adam
 import numpy as np
 from Agents import ActorNetwork, CriticNetwork, ReplayBuffer
 from itertools import chain
@@ -31,11 +31,11 @@ class MADDPG(object):
     # and a local actor network at each user
     self.local_actors = [ActorNetwork() for id in range(self.n_agents)]
     self.actor = ActorNetwork()
-    self.actor_target = deepcopy(self.common_actor)
+    self.actor_target = deepcopy(self.actor)
     self.critic = CriticNetwork()
-    self.critic_target = deepcopy(self.common_critic)
+    self.critic_target = deepcopy(self.critic)
 
-    self.memory = ReplayBuffer()
+    self.memory = ReplayBuffer(self.mem_capacity)
 
     self.actor_optimizer = Adam()
     self.critic_optimizer = Adam()
