@@ -1,10 +1,8 @@
 # code inspired by https://github.com/ChenglongChen/pytorch-DRL
 K = 4
 
-import tensorflow as tf
 from tensorflow.python.keras.layers import Dense, InputLayer, Concatenate
 from tensorflow.python.keras import Model
-from tensorflow.python.keras.optimizers import Adam
 from tensorflow.python.keras.initializers import RandomNormal
 
 import random
@@ -41,7 +39,7 @@ class ActorNetwork(Model):
     return self.output(x)
 
 
-  def take_action(self, state): #TODO
+  def select_action(self, state): #TODO
     action = 0
     return action
 
@@ -107,8 +105,9 @@ class ReplayBuffer(object):
     if batch_size > len(self.memory):
       batch_size = len(self.memory)
     transitions = random.sample(self.memory, batch_size)
-    batch = Experience(*zip(*transitions))
-    return batch
+    # batch = Experience(*zip(*transitions))
+    # return batch
+    return transitions
 
   def __len__(self):
     return len(self.memory)

@@ -80,9 +80,9 @@ class Env:
 
 
   # get user k's information from state
-  # returns tuple (h_k_BS, h_k_eve, S_k)
+  # returns tuple (h_k_BS, h_k_eve, S_k, order_k)
   def get_state_k(self, k):
-    return self.user_gains_bs[k], self.user_gains_eve[k], self.task_sizes[k]
+    return self.user_gains_bs[k], self.user_gains_eve[k], self.task_sizes[k], self.dec_order[k]
 
 
   # get user k's action
