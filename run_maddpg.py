@@ -1,8 +1,8 @@
 from MADDPG import MADDPG
 from Environment import Env
+from constants import NUM_AGENTS
 
-N_USERS = 4
-env = Env(N_USERS)
-model = MADDPG(env, N_USERS)
+env = Env(NUM_AGENTS)
+model = MADDPG(env, NUM_AGENTS)
 model.env.render()
 print(model.local_actors)

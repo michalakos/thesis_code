@@ -1,27 +1,13 @@
-K = 4                 # (edge users)
-X_LENGTH = 500        # m (horizontal length of area)
-Y_LENGTH = 500        # m (vertical length of area)
-
-NOISE_STD = -174      # dBm/Hz (AWGN)
-FADE_STD = 8          # dB (path loss)
-B = 1000000           # Hz (bandwidth)
-P_MAX = 1             # dBm (max power)
-C = 1000              # cpu cycles / bit (computational power)
-C_COEFF = 10**(-28)   # effective capacitance coefficient
-FREQUENCY = 2*10**9   # cpu cycles / sec (cpu frequency)
-SEC_RATE_TH = 1       # bit / sec (secure data rate threshold)
-T_MAX = 0.1           # sec (time threshold)
-
-
 from random import randint
 from math import dist, log
 import numpy as np
 import matplotlib.pyplot as plt
+from constants import *
 
 
 class Env:
   # create an instance of Env
-  def __init__(self, N_users=K, x_length=X_LENGTH, y_length=Y_LENGTH,
+  def __init__(self, N_users=NUM_AGENTS, x_length=X_LENGTH, y_length=Y_LENGTH,
                fade_std=FADE_STD):
     self.N_users = N_users
     self.x_length = x_length

@@ -4,14 +4,15 @@ import numpy as np
 from Agents import ActorNetwork, CriticNetwork, ReplayBuffer
 from itertools import chain
 from copy import deepcopy
+from constants import NUM_AGENTS, STATE_DIM, ACTION_DIM
 
 
 class MADDPG(object):
   # state_dim = 4*N
   # action_dim = 3*N
-  def __init__(self, env, n_agents, state_dim=16, action_dim=12, mem_capacity=250000,
-               roll_out_n_steps=10, batch_size=100,
-               episodes=2000, timeslots=200):
+  def __init__(self, env, n_agents, state_dim=STATE_DIM, action_dim=ACTION_DIM, mem_capacity=250000,
+               roll_out_n_steps=10, batch_size=100, episodes=2000, timeslots=200, epsilon_start=0.9,
+               epsilon_end=0.01, epsilon_decay=200):
     self.env = env
     self.n_agents = n_agents
     self.state_dim = state_dim
@@ -23,9 +24,9 @@ class MADDPG(object):
     self.timeslots = timeslots
     self.n_steps = 0
 
-    self.epsilon_end = 0.01
-    self.epsilon_start = 0.9
-    self.epsilon_decay = 200
+    self.epsilon_end = epsilon_end
+    self.epsilon_start = epsilon_start
+    self.epsilon_decay = epsilon_decay
 
     # parameter sharing has only one target actor and one target critic networks
     # and a local actor network at each user

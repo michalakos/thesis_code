@@ -1,5 +1,5 @@
 # code inspired by https://github.com/ChenglongChen/pytorch-DRL
-K = 4
+
 
 from keras.layers import Dense, InputLayer, Concatenate
 from keras import Model
@@ -7,11 +7,15 @@ from keras.initializers import RandomNormal
 
 import random
 from collections import namedtuple
+from constants import NUM_AGENTS
 
+# channel_gain_BS, channel_gain_EVE, task_size
+actor_state_size = 3
 # channel_gain_BS, channel_gain_EVE, task_size, decoding_order
-state_size = 4
+critic_state_size = 4*NUM_AGENTS
 # total_power, first_message_power_ratio, task_size_ratio
-action_size = 3
+actor_action_size = 3
+critic_action_size = 3*NUM_AGENTS
 
 
 # the actor network receives the state as an input
@@ -19,16 +23,16 @@ action_size = 3
 # has sigmoid output of size equal to the number of actions
 class ActorNetwork(Model):
   def __init__(self):
-    self.N_users = K
+    self.N_users = NUM_AGENTS
     initializer = RandomNormal()
 
     super().__init__()
-    self.input_layer = InputLayer(state_size)
+    self.input_layer = InputLayer(actor_state_size)
     self.hidden_1 = Dense(400, activation='relu',
                           kernel_initializer=initializer)
     self.hidden_2 = Dense(300, activation='relu',
                           kernel_initializer=initializer)
-    self.out_layer = Dense(action_size, activation='sigmoid',
+    self.out_layer = Dense(actor_action_size, activation='sigmoid',
                         kernel_initializer=initializer)
 
 
@@ -45,14 +49,14 @@ class ActorNetwork(Model):
 # has single output returning loss function
 class CriticNetwork(Model):
   def __init__(self):
-    self.N_users = K
+    self.N_users = NUM_AGENTS
     initializer = RandomNormal()
 
     super().__init__()
-    self.input_layer = InputLayer(state_size * self.N_users)
+    self.input_layer = InputLayer(critic_state_size * self.N_users)
     self.hidden_1 = Dense(400, activation='relu',
                           kernel_initializer=initializer)
-    self.action_layer = InputLayer(action_size * self.N_users)
+    self.action_layer = InputLayer(critic_action_size * self.N_users)
     self.concat = Concatenate()
     self.hidden_2 = Dense(300, activation='relu',
                           kernel_initializer=initializer)
