@@ -56,6 +56,7 @@ class Env:
 
   # return a list of channel gains - one for each user -
   # for the user's channel to the reference point (BS or Eve)
+  # TODO: fix equation based on matlab code
   def _get_channel_gains(self, ref_point):
     user_gains = []
     for user in self.user_coords:
@@ -82,7 +83,7 @@ class Env:
   # get user k's information from state
   # returns tuple (h_k_BS, h_k_eve, S_k, order_k)
   def get_state_k(self, k):
-    return self.user_gains_bs[k], self.user_gains_eve[k], self.task_sizes[k], self.dec_order[k]
+    return self.user_gains_bs[k], self.user_gains_eve[k], self.task_sizes[k]
 
 
   # get user k's action
@@ -90,7 +91,7 @@ class Env:
   # action is structured as
   #         [p_1_total, p_2_total, ..., p_K_total,
   #          p_1_1/p_1_total, p_2_1/p_2_total, ..., p_K_1/p_K_total,
-  #          s_1, s_2, ..., s_K]
+  #          s_1/S_1, s_2/S_2, ..., s_K/S_K]
   def get_action_k(self, k, action):
     return action[k], action[self.N_users + k], action[2 * self.N_users + k]
 
@@ -119,7 +120,6 @@ class Env:
     for user_k in range(self.N_users):
       energy_total += self._energy_offload_k(user_k, action) +\
         self._energy_execution_k(user_k, action)
-
     return energy_total
 
 
@@ -152,8 +152,8 @@ class Env:
 
   # return offload time
   def _offload_time_k(self, k, action):
-    user_p1, user_p2, user_split = self.get_action_k(k, action)
-    channel_bs, channel_eve, task_total = self.get_state_k(k)
+    _, _, user_split = self.get_action_k(k, action)
+    _, _, task_total = self.get_state_k(k)
 
     # calculate the required time for offloading
     sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(k, action)
@@ -174,14 +174,16 @@ class Env:
 
   # return the energy a user requires to offload their task
   def _energy_offload_k(self, k, action):
-    user_p1, user_p2, _ = self.get_action_k(k, action)
     offload_time = self._offload_time_k(k, action)
-    return (user_p1 + user_p2) * offload_time
+    user_p_tot, _, _ = self.get_action_k(k, action)
+    user_p_tot *= P_MAX
+    return user_p_tot * offload_time
 
 
   # return the secure data rates for user k
   def _secure_data_rate_k(self, k, action):
-    user_p1, user_p2, _ = self.get_action_k(k, action)
+    user_p_tot, user_p1_ratio, _ = self.get_action_k(k, action)
+    user_p1, user_p2 = self._powers_from_action(user_p_tot, user_p1_ratio)
     channel_bs, channel_eve, _ = self.get_state_k(k)
 
     # calculate first message's achievable rate of decoding at BS
@@ -222,10 +224,18 @@ class Env:
     decoding_order = self.dec_order
     interference = 0
     for user in decoding_order[k+1:]:
-      user_p1, user_p2, _ = self.get_action_k(user, action)
+      p_total_ratio, p1_ratio, _ = self.get_action_k(user, action)
+      user_p1, user_p2 = self._powers_from_action(p_total_ratio, p1_ratio)
       channel_bs, _, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_bs
     return interference
+  
+
+  def _powers_from_action(self, p_total_ratio, p1_ratio):
+    p_total *= p_total_ratio * P_MAX
+    p1 = p_total_ratio * p1_ratio
+    p2 = p_total_ratio - p1
+    return p1, p2
 
 
   # calculate the interference to the eavesdropper for a user's signal
@@ -234,7 +244,8 @@ class Env:
     for user in range(self.N_users):
       if user == k:
         continue
-      user_p1, user_p2, _ = self.get_action_k(user, action)
+      p_tot_ratio, p1_ratio, _ = self.get_action_k(user, action)
+      user_p1, user_p2 = self._powers_from_action(p_tot_ratio, p1_ratio)
       _, channel_eve, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_eve
     return interference
