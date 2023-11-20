@@ -88,6 +88,10 @@ class Env:
     reward = self._reward(action)
     self.state = self._state_update()
     return self.state, reward
+  
+
+  def get_state(self):
+    return self.state
 
 
   # calculate reward

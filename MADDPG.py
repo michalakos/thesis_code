@@ -1,7 +1,7 @@
 import tensorflow as tf
 from keras.optimizers import Adam
 import numpy as np
-from Agents import ActorNetwork, CriticNetwork, ReplayBuffer
+from Utils import ActorNetwork, CriticNetwork, ReplayBuffer, merge_actions
 from itertools import chain
 from copy import deepcopy
 from constants import NUM_AGENTS, STATE_DIM, ACTION_DIM
@@ -12,7 +12,7 @@ class MADDPG(object):
   # action_dim = 3*N
   def __init__(self, env, n_agents, state_dim=STATE_DIM, action_dim=ACTION_DIM, mem_capacity=250000,
                roll_out_n_steps=10, batch_size=100, episodes=2000, timeslots=200, epsilon_start=0.9,
-               epsilon_end=0.01, epsilon_decay=200):
+               epsilon_end=0.01, epsilon_decay=200, max_steps=100):
     self.env = env
     self.n_agents = n_agents
     self.state_dim = state_dim
@@ -23,6 +23,7 @@ class MADDPG(object):
     self.episodes = episodes
     self.timeslots = timeslots
     self.n_steps = 0
+    self.max_steps = max_steps
 
     self.epsilon_end = epsilon_end
     self.epsilon_start = epsilon_start
@@ -42,6 +43,16 @@ class MADDPG(object):
     self.critic_optimizer = Adam()
 
 
+  def _take_one_step(self):
+    state = self.env.get_state()
+    # exploration_action finds the action for all users using their local networks
+    action = self.exploration_action()
+    next_state, reward = self.env.step(action)
+    self.n_steps += 1
+    self.memory.push(state, action, reward, next_state)
+
+
+  # should be used after collecting some experience
   def train(self):
     for episode in range(self.episodes):
       print("Episode {:>5}/{}".format(episode, self.episodes))
@@ -50,23 +61,12 @@ class MADDPG(object):
       for timeslot in range(self.timeslots):
         print("\tTimeslot {:>4}/{}".format(timeslot, self.timeslots))
 
-        actions = []
-        states = []
-        for user_id in range(self.n_agents):
-          state_k = self.env.get_state_k(user_id)
-          local_actor_k = self.local_actors[user_id]
-          action_k = local_actor_k.select_action(state_k)
-          
-          actions.append(action_k)
-          states.append(state_k)
+        state = self.env.get_state()
+        action = self.exploration_action()
+        next_state, reward = self.env.step(action)
+        self.n_steps += 1
 
-        next_state, reward = self.env.step(actions)
-        # from ((p1_1, p1_2, S1), (p2_1, p2_2, S2), ...)
-        # to (p1_1, p2_1, ..., p1_2, p2_2, ..., S1, S2, ...)
-        actions = tuple(chain(*zip(*actions)))
-        states = tuple(chain(*zip(*states)))
-
-        exp_tuple = (states, actions, reward, next_state)
+        exp_tuple = (state, action, reward, next_state)
         self.memory.push(*exp_tuple)
 
         samples = self.memory.sample(self.batch_size)
@@ -89,9 +89,12 @@ class MADDPG(object):
   
 
   def exploration_action(self):
+    # TODO: change random noise to Ornstein-Uhlenbeck process
     actions = self.action()
     epsilon = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * \
                               np.exp(-1. * self.n_steps / self.epsilon_decay)
-    noise = np.random.randn(self.action_dim) * epsilon
+    noise = np.random.randn(self.action_dim * self.n_agents) * epsilon
+    # noise should be added to each action
+    assert(np.shape(actions)==np.shape(noise))
 
     return actions + noise
