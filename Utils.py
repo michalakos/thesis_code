@@ -2,19 +2,21 @@
 from keras.layers import Dense, InputLayer, Concatenate
 from keras import Model
 from keras.initializers import RandomNormal
+import tensorflow as tf
 
 import random
 from collections import namedtuple
 from itertools import chain
-from constants import NUM_AGENTS
+from constants import NUM_USERS
+import numpy as np
 
 # channel_gain_BS, channel_gain_EVE, task_size
 actor_state_size = 3
 # channel_gain_BS, channel_gain_EVE, task_size, decoding_order
-critic_state_size = 4*NUM_AGENTS
+critic_state_size = 4*NUM_USERS
 # total_power, first_message_power_ratio, task_size_ratio
 actor_action_size = 3
-critic_action_size = 3*NUM_AGENTS
+critic_action_size = 3*NUM_USERS
 
 
 # the actor network receives the state as an input
@@ -22,7 +24,7 @@ critic_action_size = 3*NUM_AGENTS
 # has sigmoid output of size equal to the number of actions
 class ActorNetwork(Model):
   def __init__(self):
-    self.N_users = NUM_AGENTS
+    self.N_users = NUM_USERS
     initializer = RandomNormal()
 
     super().__init__()
@@ -48,7 +50,7 @@ class ActorNetwork(Model):
 # has single output returning loss function
 class CriticNetwork(Model):
   def __init__(self):
-    self.N_users = NUM_AGENTS
+    self.N_users = NUM_USERS
     initializer = RandomNormal()
 
     super().__init__()
@@ -103,9 +105,8 @@ class ReplayBuffer(object):
     if batch_size > len(self.memory):
       batch_size = len(self.memory)
     transitions = random.sample(self.memory, batch_size)
-    # batch = Experience(*zip(*transitions))
-    # return batch
-    return transitions
+    batch = Experience(*zip(*transitions))
+    return batch
 
   def __len__(self):
     return len(self.memory)
@@ -115,3 +116,18 @@ def merge_actions(actions):
   # actions is a list of (p_tot_ratio, p_1_ratio, s_ratio) tuples
   # returns a total action
   return tuple(chain(*zip(*actions)))
+
+
+def to_tensor_var(x, dtype="float"):
+    if dtype == "float":
+        x = np.array(x, dtype=np.float64).tolist()
+        return tf.constant(x)
+    elif dtype == "long":
+        x = np.array(x, dtype=np.long).tolist()
+        return tf.constant(x)
+    elif dtype == "byte":
+        x = np.array(x, dtype=np.byte).tolist()
+        return tf.constant(x)
+    else:
+        x = np.array(x, dtype=np.float64).tolist()
+        return tf.constant(x)

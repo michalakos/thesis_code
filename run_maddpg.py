@@ -1,8 +1,26 @@
-from MADDPG import MADDPG
+from Agent import DDPGAgent
 from Environment import Env
-from constants import NUM_AGENTS
 
-env = Env(NUM_AGENTS)
-model = MADDPG(env, NUM_AGENTS)
-model.env.render()
-print(model.local_actors)
+agent = DDPGAgent()
+env = Env()
+num_episodes = 2000
+num_timeslots = 200
+
+
+for episode in range(num_episodes):
+  print("Episode {:>5}/{}".format(episode+1, num_episodes+1))
+  env.reset()
+  total_reward = 0
+
+  for timeslot in range(num_timeslots):
+    print("\tTimeslot {:>4}/{}".format(timeslot+1, num_timeslots+1))
+
+    state = env.get_state()
+    action = agent.get_action(state)
+    next_state, reward = env.step(action)
+    agent.store_experience(state, action, reward, next_state)
+
+    agent.train()
+    total_reward += reward
+
+  print("Episode {} ended with total reward {}".format(episode+1, total_reward))

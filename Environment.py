@@ -7,7 +7,7 @@ from constants import *
 
 class Env:
   # create an instance of Env
-  def __init__(self, N_users=NUM_AGENTS, x_length=X_LENGTH, y_length=Y_LENGTH,
+  def __init__(self, N_users=NUM_USERS, x_length=X_LENGTH, y_length=Y_LENGTH,
                fade_std=FADE_STD):
     self.N_users = N_users
     self.x_length = x_length

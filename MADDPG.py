@@ -1,10 +1,10 @@
 import tensorflow as tf
 from keras.optimizers import Adam
 import numpy as np
-from Utils import ActorNetwork, CriticNetwork, ReplayBuffer, merge_actions
+from Utils import ActorNetwork, CriticNetwork, ReplayBuffer, merge_actions, to_tensor_var
 from itertools import chain
 from copy import deepcopy
-from constants import NUM_AGENTS, STATE_DIM, ACTION_DIM
+from constants import NUM_USERS, STATE_DIM, ACTION_DIM
 
 
 class MADDPG(object):
@@ -12,7 +12,7 @@ class MADDPG(object):
   # action_dim = 3*N
   def __init__(self, env, n_agents, state_dim=STATE_DIM, action_dim=ACTION_DIM, mem_capacity=250000,
                roll_out_n_steps=10, batch_size=100, episodes=2000, timeslots=200, epsilon_start=0.9,
-               epsilon_end=0.01, epsilon_decay=200, max_steps=100):
+               epsilon_end=0.01, epsilon_decay=200, max_steps=100, gamma=0.99, tau=0.005):
     self.env = env
     self.n_agents = n_agents
     self.state_dim = state_dim
@@ -28,6 +28,8 @@ class MADDPG(object):
     self.epsilon_end = epsilon_end
     self.epsilon_start = epsilon_start
     self.epsilon_decay = epsilon_decay
+    self.gamma = gamma
+    self.tau = tau
 
     # parameter sharing has only one target actor and one target critic networks
     # and a local actor network at each user
@@ -69,7 +71,14 @@ class MADDPG(object):
         exp_tuple = (state, action, reward, next_state)
         self.memory.push(*exp_tuple)
 
-        samples = self.memory.sample(self.batch_size)
+        batch = self.memory.sample(self.batch_size)
+        state_tensor = to_tensor_var(batch.states).view(-1, self.state_dim)
+        action_tensor = to_tensor_var(batch.actions).view(-1, self.action_dim)
+        reward_tensor = to_tensor_var(batch.rewards).view(-1, 1)
+        next_state_tensor = to_tensor_var(batch.next_states).view(-1, self.state_dim)
+        with tf.GradientTape() as tape:
+          next_action_tensor = self.actor_target(next_state_tensor)
+          next_q = self.critic_target(next_state_tensor, next_action_tensor).detach()
         # update critic
         # update actor
         # update target networks
@@ -80,7 +89,7 @@ class MADDPG(object):
     actions = []
     for user_id in range(self.n_agents):
       state_k = self.env.get_state_k()
-      action_var = self.local_actors[user_id](tf.convert_to_tensor(state_k))
+      action_var = self.local_actors[user_id].predict(tf.convert_to_tensor(state_k))
       action_k = action_var.data.numpy()[0]
       actions.append(action_k)
 
@@ -93,7 +102,7 @@ class MADDPG(object):
     actions = self.action()
     epsilon = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * \
                               np.exp(-1. * self.n_steps / self.epsilon_decay)
-    noise = np.random.randn(self.action_dim * self.n_agents) * epsilon
+    noise = np.random.normal(scale=0.1, size=self.action_dim * self.n_agents) * epsilon
     # noise should be added to each action
     assert(np.shape(actions)==np.shape(noise))
 
