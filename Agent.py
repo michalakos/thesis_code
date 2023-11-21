@@ -34,7 +34,7 @@ class DDPGAgent:
     self.target_critic.set_weights(self.critic.get_weights())
 
     self.actor_optimizer = optimizers.Adam(learning_rate=0.001)
-    self.critic_optmizer = optimizers.Adam(learning_rate=0.002)
+    self.critic_optimizer = optimizers.Adam(learning_rate=0.002)
 
     self.local_actors = []
 
@@ -69,7 +69,7 @@ class DDPGAgent:
 
   def _get_user_state(self, state, user_id):
      user_state = (state[user_id], state[NUM_USERS+user_id], state[2*NUM_USERS+user_id])
-     return user_state
+     return np.array(user_state)
   
 
   def _get_epsilon(self):
@@ -87,7 +87,7 @@ class DDPGAgent:
 
     action = tuple(chain(*zip(*user_actions)))
     epsilon = self._get_epsilon()
-    noise = np.random.normal(scale=0.1, size=self.action_dim * NUM_USERS) * epsilon
+    noise = np.random.normal(scale=0.1, size=ACTION_DIM * NUM_USERS) * epsilon
     return action + noise
   
 
@@ -109,7 +109,8 @@ class DDPGAgent:
     rewards = np.vstack(mini_batch.rewards)
     next_states = np.vstack(mini_batch.next_states)
 
-    with tf.GradientTape as tape:
+    with tf.GradientTape() as tape:
+      # TODO: calculate target action for all users
       target_actions = self.target_actor(user_next_states)
       target_q_values = self.target_critic(tf.concat([next_states, target_actions], axis=1))
       target_values = rewards + self.gamma * target_q_values

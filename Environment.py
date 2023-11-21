@@ -91,7 +91,7 @@ class Env:
   
 
   def get_state(self):
-    return self.state
+    return np.array(self.state)
 
 
   # calculate reward
@@ -222,9 +222,9 @@ class Env:
   
 
   def _powers_from_action(self, p_total_ratio, p1_ratio):
-    p_total *= p_total_ratio * P_MAX
-    p1 = p_total_ratio * p1_ratio
-    p2 = p_total_ratio - p1
+    p_total = p_total_ratio * P_MAX
+    p1 = p_total * p1_ratio
+    p2 = p_total - p1
     return p1, p2
 
 

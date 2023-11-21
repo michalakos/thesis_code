@@ -8,12 +8,12 @@ num_timeslots = 200
 
 
 for episode in range(num_episodes):
-  print("Episode {:>5}/{}".format(episode+1, num_episodes+1))
+  print("Episode {:>5}/{}".format(episode+1, num_episodes))
   env.reset()
   total_reward = 0
 
   for timeslot in range(num_timeslots):
-    print("\tTimeslot {:>4}/{}".format(timeslot+1, num_timeslots+1))
+    print("\tTimeslot {:>4}/{}".format(timeslot+1, num_timeslots))
 
     state = env.get_state()
     action = agent.get_action(state)

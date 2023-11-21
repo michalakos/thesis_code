@@ -12,7 +12,7 @@ def build_actor(state_dim, action_dim, first_layer=400, second_layer=300):
 
 def build_critic(state_dim, action_dim, first_layer=400, second_layer=300):
   model = models.Sequential([
-    layers.Dense(first_layer, activation='relu', input_shape=(state_dim + action_dim)),
+    layers.Dense(first_layer, activation='relu', input_shape=(state_dim + action_dim,)),
     layers.Dense(second_layer, activation='relu'),
     layers.Dense(1)
   ])
