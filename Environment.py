@@ -74,12 +74,10 @@ class Env:
 
   # get user k's action
   # return tuple (p_k_1, p_k_2, s_k)
-  # action is structured as
-  #         [p_1_total, p_2_total, ..., p_K_total,
-  #          p_1_1/p_1_total, p_2_1/p_2_total, ..., p_K_1/p_K_total,
-  #          s_1/S_1, s_2/S_2, ..., s_K/S_K]
+  # action is structured as (action_user_1, action_user_2, ...)
+  # where action_user_k is: p_total_ratio_k, p_1_ratio_k, s_k
   def get_action_k(self, k, action):
-    return action[k], action[self.N_users + k], action[2 * self.N_users + k]
+    return action[ACTION_DIM * k], action[ACTION_DIM * k + 1], action[ACTION_DIM * k + 2]
 
 
   # update state based on action and get new state and reward

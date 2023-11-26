@@ -13,3 +13,5 @@ T_MAX = 0.1           # sec (time threshold)
 BETA = 1000           # number of steps required to update local networks
 STATE_DIM = 3         # bs_channel, eve_channel, task_size
 ACTION_DIM = 3        # p_total_ratio, p1_ratio, task_size_ratio
+EPISODES = 200
+TIMESLOTS = 2000

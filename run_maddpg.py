@@ -1,11 +1,13 @@
-from Agent import DDPGAgent
+from Algorithm1 import MADDPG
 from Environment import Env
 
-agent = DDPGAgent()
-env = Env()
 num_episodes = 2000
 num_timeslots = 200
 
+env = Env()
+agent = MADDPG(env)
+
+agent.rollout()
 
 for episode in range(num_episodes):
   print("Episode {:>5}/{}".format(episode+1, num_episodes))

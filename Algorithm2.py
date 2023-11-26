@@ -3,7 +3,7 @@ from keras import optimizers
 import numpy as np
 from itertools import chain
 import random
-from Networks import build_actor, build_critic
+from Networks import Actor, Critic
 from Utils import ReplayBuffer
 from constants import STATE_DIM, ACTION_DIM, NUM_USERS, BETA
 
@@ -12,7 +12,7 @@ CRITIC_ACTION_DIM = ACTION_DIM * NUM_USERS
 
 
 class DDPGAgent:
-  def __init__(self):
+  def __init__(self, env):
     self.batch_size = 100
     self.memory_capacity = 250000
     self.episodes = 2000
@@ -25,10 +25,12 @@ class DDPGAgent:
     self.gamma = 0.99
     self.tau = 0.005
 
-    self.actor = build_actor(state_dim=STATE_DIM, action_dim=ACTION_DIM)
-    self.critic = build_critic(state_dim=CRITIC_STATE_DIM, action_dim=CRITIC_ACTION_DIM)
-    self.target_actor = build_actor(state_dim=STATE_DIM, action_dim=ACTION_DIM)
-    self.target_critic = build_critic(state_dim=CRITIC_STATE_DIM, action_dim=CRITIC_ACTION_DIM)
+    self.env = env
+
+    self.actor = Actor(state_dim=STATE_DIM, action_dim=ACTION_DIM)
+    self.critic = Critic(state_dim=CRITIC_STATE_DIM, action_dim=CRITIC_ACTION_DIM)
+    self.target_actor = Actor(state_dim=STATE_DIM, action_dim=ACTION_DIM)
+    self.target_critic = Critic(state_dim=CRITIC_STATE_DIM, action_dim=CRITIC_ACTION_DIM)
 
     self.target_actor.set_weights(self.actor.get_weights())
     self.target_critic.set_weights(self.critic.get_weights())
@@ -39,7 +41,7 @@ class DDPGAgent:
     self.local_actors = []
 
     for user_id in range(NUM_USERS):
-      self.local_actors.append(build_actor(state_dim=STATE_DIM, action_dim=ACTION_DIM))
+      self.local_actors.append(Actor(state_dim=STATE_DIM, action_dim=ACTION_DIM))
 
     self.memory = ReplayBuffer(self.memory_capacity)
 
@@ -78,22 +80,69 @@ class DDPGAgent:
     return epsilon
 
 
-  def get_action(self, state):
-    user_actions = []
+  def get_action(self, state, exploration=True):
+    action = np.array([])
     for user_id in range(NUM_USERS):
       user_state = self._get_user_state(state, user_id)
-      user_action = self.local_actors[user_id].predict(user_state.reshape(1,-1))[0]
-      user_actions.append(user_action)
+      user_action = self.local_actors[user_id].predict(user_state.reshape(1,-1), verbose=0)[0]
+      action = np.concatenate((action, user_action))
 
-    action = tuple(chain(*zip(*user_actions)))
-    epsilon = self._get_epsilon()
-    noise = np.random.normal(scale=0.1, size=ACTION_DIM * NUM_USERS) * epsilon
-    return action + noise
+    if exploration:
+      epsilon = self._get_epsilon()
+      noise = np.random.normal(scale=0.1, size=ACTION_DIM * NUM_USERS) * epsilon
+      action += noise
+
+    return action
+  
+
+  def get_target_action(self, state):
+    action = np.array([])
+    for user_id in range(NUM_USERS):
+      user_state = self._get_user_state(state, user_id)
+      user_action = self.target_actor(user_state.reshape(1,-1)).numpy()[0]
+      action = np.concatenate((action, user_action))
+    return action
+  
+
+  def get_target_actions(self, states):    
+    actions = []
+    for state in states:
+      action = self.get_target_action(state)
+      actions.append(action)
+    return actions
+
+
+  def get_base_actor_action(self, state):
+    action = np.array([])
+    for user_id in range(NUM_USERS):
+      user_state = self._get_user_state(state, user_id)
+      user_action = self.actor(user_state.reshape(1,-1)).numpy()[0]
+      action = np.concatenate((action, user_action))
+    return action
+  
+
+  def get_base_actor_actions(self, states):
+    actions = []
+    for state in states:
+      action = self.get_base_actor_action(state)
+      actions.append(action)
+    return actions
   
 
   def store_experience(self, state, action, reward, next_state):
     self.memory.push(state, action, reward, next_state)
   
+
+  def rollout(self):
+    for _ in range(self.roll_out_steps):
+      self.n_steps += 1
+      
+      state = self.env.get_state()
+      action = self.get_action(state)
+      next_state, reward = self.env.step(action)
+      self.store_experience(state, action, reward, next_state)
+    print("Rollout complete")
+
 
   def train(self):
     self.n_steps += 1
@@ -111,7 +160,7 @@ class DDPGAgent:
 
     with tf.GradientTape() as tape:
       # TODO: calculate target action for all users
-      target_actions = self.target_actor(user_next_states)
+      target_actions = self.get_target_actions(next_states)
       target_q_values = self.target_critic(tf.concat([next_states, target_actions], axis=1))
       target_values = rewards + self.gamma * target_q_values
       predicted_values = self.critic(tf.concat([states, actions], axis=1))
@@ -120,13 +169,18 @@ class DDPGAgent:
     critic_gradients = tape.gradient(critic_loss, self.critic.trainable_variables)
     self.critic_optimizer.apply_gradients(zip(critic_gradients, self.critic.trainable_variables))
 
+    actions = self.get_base_actor_actions(states)
     with tf.GradientTape() as tape:
-      actions = self.actor(user_states)
-      q_values = self.critic(tf.concat([states, actions], axis=1))
-      actor_loss = -tf.reduce_mean(q_values)
-
-    actor_gradients = tape.gradient(actor_loss, self.actor.trainable_variables)
-    self.actor_optimizer.apply_gradients(zip(actor_gradients, self.actor.trainable_variables))
+      q_val = self.critic(tf.concat([states, actions], axis=1))
+      q_gradient = tape.gradient(q_val, self.critic.trainable_variables)
+      for user_id in range(NUM_USERS):
+        # user_state = 
+        policy = self.actor()
+      1/0
+      # q_values = self.critic(tf.concat([states, actions], axis=1))
+      # actor_loss = -tf.reduce_mean(q_values)
+    # actor_gradients = tape.gradient(actor_loss, self.actor.trainable_variables)
+    # self.actor_optimizer.apply_gradients(zip(actor_gradients, self.actor.trainable_variables))
 
     self.update_target_networks()
     if self.n_steps % BETA == 0:
