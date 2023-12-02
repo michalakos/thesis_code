@@ -7,6 +7,7 @@ from torch.optim import Adam
 from random_process import OrnsteinUhlenbeckProcess
 import numpy as np
 from pytorch_params import scale_reward
+from constants import BETA
 
 
 def soft_update(target, source, t):
@@ -25,9 +26,9 @@ def hard_update(target, source):
 class MADDPG:
     def __init__(self, n_agents, dim_obs, dim_act, batch_size,
                  capacity, episodes_before_train):
-        self.actors = [Actor(dim_obs, dim_act) for i in range(n_agents)]
-        self.critics = [Critic(n_agents, dim_obs,
-                               dim_act) for i in range(n_agents)]
+        self.actors = [Actor(dim_obs, dim_act) for _ in range(n_agents)]
+        self.critics = [Critic(n_agents, dim_obs, dim_act) for _ in range(n_agents)]
+        self.local_actors = [Actor(dim_obs, dim_act) for _ in range(n_agents)]
         self.actors_target = deepcopy(self.actors)
         self.critics_target = deepcopy(self.critics)
 
@@ -106,7 +107,7 @@ class MADDPG:
             target_Q = th.zeros(
                 self.batch_size).type(FloatTensor)
 
-            target_Q[non_final_mask] = self.critics_target[agent](                      # deprecated
+            target_Q[non_final_mask] = self.critics_target[agent](
                 non_final_next_states.view(-1, self.n_agents * self.n_states),
                 non_final_next_actions.view(-1,
                                             self.n_agents * self.n_actions)
@@ -115,7 +116,6 @@ class MADDPG:
             target_Q = target_Q.unsqueeze(1)
 
             target_Q = th.add(target_Q * self.GAMMA, reward_batch * scale_reward)
-            # target_Q = target_Q.squeeze()
 
             loss_Q = nn.MSELoss()(current_Q, target_Q.detach())
             loss_Q.backward()
@@ -134,10 +134,13 @@ class MADDPG:
             c_loss.append(loss_Q)
             a_loss.append(actor_loss)
 
-        if self.steps_done % 100 == 0 and self.steps_done > 0:
+        for i in range(self.n_agents):
+            soft_update(self.critics_target[i], self.critics[i], self.tau)
+            soft_update(self.actors_target[i], self.actors[i], self.tau)
+
+        if self.steps_done % BETA == 0 and self.steps_done > 0:
             for i in range(self.n_agents):
-                soft_update(self.critics_target[i], self.critics[i], self.tau)
-                soft_update(self.actors_target[i], self.actors[i], self.tau)
+                hard_update(self.local_actors[i], self.actors[i])
 
         return c_loss, a_loss
 
@@ -149,14 +152,14 @@ class MADDPG:
         FloatTensor = th.cuda.FloatTensor if self.use_cuda else th.FloatTensor
         for i in range(self.n_agents):
             sb = state_batch[i, :].detach()
-            act = self.actors[i](sb.unsqueeze(0)).squeeze()
+            act = self.local_actors[i](sb.unsqueeze(0)).squeeze()
 
             act += th.from_numpy(
                 np.random.randn(self.n_actions) * self.var[i]).type(FloatTensor)
 
             if self.episode_done > self.episodes_before_train and\
-               self.var[i] > 0.05:
-                self.var[i] *= 0.999998
+               self.var[i] > 0.02:
+                self.var[i] *= 0.99999
             act = th.clamp(act, 0, 1.0)
 
             actions[i, :] = act

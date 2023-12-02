@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from constants import *
 
-
+#TODO: correct channel gains
 class Env:
   # create an instance of Env
   def __init__(self, N_users=NUM_USERS, x_length=X_LENGTH, y_length=Y_LENGTH,
@@ -50,6 +50,9 @@ class Env:
       user_path_loss = 128.1 + 37.6 *\
        log(dist(ref_point, user) / 1000, 10) +\
        np.random.normal(0, self.fade_std)
+      
+      # convert dB to linear
+      user_path_loss = np.power(10, user_path_loss/10)
       # gain = 1 / path loss
       user_gains.append(1/user_path_loss)
     return user_gains
@@ -95,13 +98,13 @@ class Env:
 
 
   # calculate reward
-  # the model tries to maximize the reward and we try to minimize the energy
-  # consumption so -Energy_total is used
-  # QoS ranges from 1 to 2, the lower the better
-  # lower QoS value lowers the reward we try to minimize
-  # QoS value shouldn't be zero because the energy's effect is negated
+  # the model tries to maximize the reward and we try to minimize the energy consumption
+  # first part ranges from 1 (zero power consumption)
+  # to 0 (infinite power consumption)
+  # QoS ranges from 0 (no requirements met)
+  # to 1 (all requirement met)
   def _reward(self, action):
-    return -self._energy_sum(action) * self._qos(action)
+    return (-np.tanh(self._energy_sum(action)) + 1) * self._qos(action)
 
 
   # return the total energy consumed in the last timeslot
@@ -113,9 +116,7 @@ class Env:
     return energy_total
 
 
-  # quality of service indicator, ranges from 1 (great) to 2 (bad)
-  # offset +1 because a zero value would negate the effect of energy
-  # in reward calculation
+  # quality of service indicator, ranges from 0 (bad) to 1 (great)
   def _qos(self, action):
     res = 0
     for user in range(self.N_users):
@@ -124,12 +125,14 @@ class Env:
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
 
-      if (sec_data_rate_k_1 > SEC_RATE_TH and
-        sec_data_rate_k_2 > SEC_RATE_TH and
-        max(offload_time, execution_time) > T_MAX):
+      if (sec_data_rate_k_1 < SEC_RATE_TH):
+        res += 1
+      if (sec_data_rate_k_2 < SEC_RATE_TH):
+        res += 1
+      if (max(offload_time, execution_time) > T_MAX):
         res += 1
 
-    return res / self.N_users + 1
+    return -np.tanh(res / self.N_users) + 1
 
 
   # return the total energy consumed for execution of local task at user
