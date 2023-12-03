@@ -11,6 +11,19 @@ import os
 import pickle
 
 
+def soft_update(target, source, t):
+    for target_param, source_param in zip(target.parameters(),
+                                        source.parameters()):
+        target_param.data.copy_(
+            (1 - t) * target_param.data + t * source_param.data)
+
+
+def hard_update(target, source):
+    for target_param, source_param in zip(target.parameters(),
+                                        source.parameters()):
+        target_param.data.copy_(source_param.data)
+
+
 class MADDPG:
     def __init__(self, n_agents, dim_obs, dim_act, batch_size,
                  capacity, episodes_before_train):
@@ -49,19 +62,6 @@ class MADDPG:
 
         self.steps_done = 0
         self.episode_done = 0
-
-
-    def _soft_update(target, source, t):
-        for target_param, source_param in zip(target.parameters(),
-                                            source.parameters()):
-            target_param.data.copy_(
-                (1 - t) * target_param.data + t * source_param.data)
-
-
-    def _hard_update(target, source):
-        for target_param, source_param in zip(target.parameters(),
-                                            source.parameters()):
-            target_param.data.copy_(source_param.data)
 
 
     def update_policy(self):
@@ -136,12 +136,12 @@ class MADDPG:
             a_loss.append(actor_loss)
 
         for i in range(self.n_agents):
-            self._soft_update(self.critics_target[i], self.critics[i], self.tau)
-            self._soft_update(self.actors_target[i], self.actors[i], self.tau)
+            soft_update(self.critics_target[i], self.critics[i], self.tau)
+            soft_update(self.actors_target[i], self.actors[i], self.tau)
 
         if self.steps_done % BETA == 0 and self.steps_done > 0:
             for i in range(self.n_agents):
-                self._hard_update(self.local_actors[i], self.actors[i])
+                hard_update(self.local_actors[i], self.actors[i])
 
         return c_loss, a_loss
 
