@@ -1,26 +1,14 @@
-from pytorch_models import Critic, Actor
+from models import Critic, Actor
 import torch as th
 from copy import deepcopy
-from pytorch_memory import ReplayMemory, Experience
+from memory import ReplayMemory, Experience
 import torch.nn as nn
 from torch.optim import Adam
 from random_process import OrnsteinUhlenbeckProcess
 import numpy as np
-from pytorch_params import scale_reward
-from constants import BETA
-
-
-def soft_update(target, source, t):
-    for target_param, source_param in zip(target.parameters(),
-                                          source.parameters()):
-        target_param.data.copy_(
-            (1 - t) * target_param.data + t * source_param.data)
-
-
-def hard_update(target, source):
-    for target_param, source_param in zip(target.parameters(),
-                                          source.parameters()):
-        target_param.data.copy_(source_param.data)
+from constants import SCALE_REWARD, BETA
+import os
+import pickle
 
 
 class MADDPG:
@@ -61,6 +49,19 @@ class MADDPG:
 
         self.steps_done = 0
         self.episode_done = 0
+
+
+    def _soft_update(target, source, t):
+        for target_param, source_param in zip(target.parameters(),
+                                            source.parameters()):
+            target_param.data.copy_(
+                (1 - t) * target_param.data + t * source_param.data)
+
+
+    def _hard_update(target, source):
+        for target_param, source_param in zip(target.parameters(),
+                                            source.parameters()):
+            target_param.data.copy_(source_param.data)
 
 
     def update_policy(self):
@@ -115,7 +116,7 @@ class MADDPG:
             # scale_reward: to scale reward in Q functions
             target_Q = target_Q.unsqueeze(1)
 
-            target_Q = th.add(target_Q * self.GAMMA, reward_batch * scale_reward)
+            target_Q = th.add(target_Q * self.GAMMA, reward_batch * SCALE_REWARD)
 
             loss_Q = nn.MSELoss()(current_Q, target_Q.detach())
             loss_Q.backward()
@@ -135,12 +136,12 @@ class MADDPG:
             a_loss.append(actor_loss)
 
         for i in range(self.n_agents):
-            soft_update(self.critics_target[i], self.critics[i], self.tau)
-            soft_update(self.actors_target[i], self.actors[i], self.tau)
+            self._soft_update(self.critics_target[i], self.critics[i], self.tau)
+            self._soft_update(self.actors_target[i], self.actors[i], self.tau)
 
         if self.steps_done % BETA == 0 and self.steps_done > 0:
             for i in range(self.n_agents):
-                hard_update(self.local_actors[i], self.actors[i])
+                self._hard_update(self.local_actors[i], self.actors[i])
 
         return c_loss, a_loss
 
@@ -166,3 +167,23 @@ class MADDPG:
         self.steps_done += 1
 
         return actions
+    
+
+    def save(self, episode, path, reward_record):
+        path = '{}/ep_{}'.format(path, episode)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        reward_record_file = '{}/{}'.format(path, 'reward_record.txt')
+        with open(reward_record_file, 'w') as file:
+            for reward in reward_record:
+                file.write("{}\n".format(reward))
+
+        class_file = '{}/maddpg.pkl'.format(path)
+        with open(class_file, 'wb') as f:
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+
+    def load(self, path):
+        class_file = '{}/maddpg.pkl'.format(path)
+        with open(class_file, 'rb') as f:
+            self = pickle.load(f)

@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 NUM_USERS = 4        # (edge users)
 X_LENGTH = 500        # m (horizontal length of area)
 Y_LENGTH = 500        # m (vertical length of area)
@@ -18,3 +21,5 @@ TIMESLOTS = 200
 EPISODES_BEFORE_TRAIN = 50
 CAPACITY = 1000000
 BATCH_SIZE = 1000
+SCALE_REWARD = 0.01
+PATH = '/home/michalakos/Documents/Thesis/training_results/maddpg/{}'.format(datetime.now())
