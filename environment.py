@@ -53,7 +53,7 @@ class Environment:
       
       # convert dB to linear
       # gain = 1 / path loss
-      user_gain = np.power(10, 1/(user_path_loss*10))
+      user_gain = np.power(10, -user_path_loss/10)
       user_gains.append(user_gain)
     # print('user_gains to {}: {}'.format(ref_point, user_gains))
     return user_gains
@@ -156,7 +156,7 @@ class Environment:
     if sec_data_rate_k > 0:
       offload_time = user_split * task_total / (C * sec_data_rate_k)
     else:
-      offload_time = T_MAX + 1
+      offload_time = T_MAX + 1000
     return offload_time
 
 
