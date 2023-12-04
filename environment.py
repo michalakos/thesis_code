@@ -52,9 +52,10 @@ class Environment:
        np.random.normal(0, self.fade_std)
       
       # convert dB to linear
-      user_path_loss = np.power(10, user_path_loss/10)
       # gain = 1 / path loss
-      user_gains.append(1/user_path_loss)
+      user_gain = np.power(10, 1/(user_path_loss*10))
+      user_gains.append(user_gain)
+    # print('user_gains to {}: {}'.format(ref_point, user_gains))
     return user_gains
 
 
@@ -62,7 +63,7 @@ class Environment:
   # return new state
   def _state_update(self):
     # task bit size around 1 to 3 * 10^5 bits
-    self.task_sizes = [randint(100000, 300000) for user in range(self.N_users)]
+    self.task_sizes = [int(np.random.normal(DATA_ARRIVAL_RATE*T_MAX, DATA_ARRIVAL_RATE*T_MAX*0.05)) for _ in range(self.N_users)]
     self.dec_order = [x for x in range(self.N_users)]
     self.state = np.array(tuple(zip(self.user_gains_bs, self.user_gains_eve, self.task_sizes)))
     # self.state = self.user_gains_bs + self.user_gains_eve +\
@@ -99,12 +100,10 @@ class Environment:
 
   # calculate reward
   # the model tries to maximize the reward and we try to minimize the energy consumption
-  # first part ranges from 1 (zero power consumption)
-  # to 0 (infinite power consumption)
   # QoS ranges from 0 (no requirements met)
   # to 1 (all requirement met)
   def _reward(self, action):
-    return (-np.tanh(self._energy_sum(action)) + 1) * self._qos(action)
+    return (1/self._energy_sum(action)) * self._qos(action)
 
 
   # return the total energy consumed in the last timeslot
@@ -125,14 +124,17 @@ class Environment:
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
 
-      if (sec_data_rate_k_1 < SEC_RATE_TH):
+      if sec_data_rate_k_1 < SEC_RATE_TH and sec_data_rate_k_2 < SEC_RATE_TH and max(offload_time, execution_time) < T_MAX:
         res += 1
-      if (sec_data_rate_k_2 < SEC_RATE_TH):
-        res += 1
-      if (max(offload_time, execution_time) > T_MAX):
-        res += 1
-
-    return -np.tanh(res / self.N_users) + 1
+      # if (sec_data_rate_k_1 < SEC_RATE_TH):
+      #   res += 1
+      # if (sec_data_rate_k_2 < SEC_RATE_TH):
+      #   res += 1
+      # if (max(offload_time, execution_time) > T_MAX):
+      #   res += 1
+    # return -np.tanh(res / self.N_users) + 1
+    # print("sec_data_rates: ({},{})\tT_off:{}\tT_ex:{}".format(sec_data_rate_k_1, sec_data_rate_k_2, offload_time, execution_time))
+    return res / self.N_users
 
 
   # return the total energy consumed for execution of local task at user
@@ -140,7 +142,7 @@ class Environment:
     _, _, user_split = self.get_action_k(k, action)
     _, _, task_total = self.get_state_k(k)
 
-    return C_COEFF * FREQUENCY ** 2 * (1 - user_split) * task_total
+    return C_COEFF * (FREQUENCY ** 2) * (1 - user_split) * task_total
 
 
   # return offload time
@@ -169,8 +171,12 @@ class Environment:
   def _energy_offload_k(self, k, action):
     offload_time = self._offload_time_k(k, action)
     user_p_tot, _, _ = self.get_action_k(k, action)
-    user_p_tot *= P_MAX
+    user_p_tot *= self._dbm_to_watts(P_MAX)
     return user_p_tot * offload_time
+  
+
+  def _dbm_to_watts(self, y_dbm):
+    return 10**(y_dbm/10)/1000
 
 
   # return the secure data rates for user k
@@ -182,14 +188,14 @@ class Environment:
     # calculate first message's achievable rate of decoding at BS
     bs_interference = self._interference_bs_k(k, action)
     log_arg = 1 + channel_bs * user_p1 / \
-        (bs_interference + channel_bs * user_p2 + NOISE_STD * B)
+        (bs_interference + channel_bs * user_p2 + NOISE_STD)
     rate_bs_1 = B * log(log_arg, 2)
 
 
     # calculate first message's achievable rate of decoding at eavesdropper
     eve_interference = self._interference_eve_k(k, action)
     log_arg = 1 + channel_eve * user_p1 / \
-        (eve_interference + channel_eve * user_p2 + NOISE_STD * B)
+        (eve_interference + channel_eve * user_p2 + NOISE_STD)
     rate_eve_1 = B * log(log_arg, 2)
 
     secure_data_rate_1 = max(0, rate_bs_1 - rate_eve_1)   # first message
@@ -197,12 +203,12 @@ class Environment:
     # calculate second message's achievable rates
     # base station
     log_arg = 1 + channel_bs * user_p2 / \
-        (bs_interference + NOISE_STD * B)
+        (bs_interference + NOISE_STD)
     rate_bs_2 = B * log(log_arg, 2)
 
     # eavesdropper
     log_arg = 1 + channel_eve * user_p2 / \
-        (eve_interference + channel_eve * user_p1 + NOISE_STD * B)
+        (eve_interference + channel_eve * user_p1 + NOISE_STD)
     rate_eve_2 = B * log(log_arg, 2)
 
     secure_data_rate_2 = max(0, rate_bs_2 - rate_eve_2)   # second message

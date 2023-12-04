@@ -7,9 +7,6 @@ from torch.optim import Adam
 from random_process import OrnsteinUhlenbeckProcess
 import numpy as np
 from constants import SCALE_REWARD, BETA
-import os
-import pickle
-
 
 def soft_update(target, source, t):
     for target_param, source_param in zip(target.parameters(),
@@ -168,22 +165,3 @@ class MADDPG:
 
         return actions
     
-
-    def save(self, episode, path, reward_record):
-        path = '{}/ep_{}'.format(path, episode)
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        reward_record_file = '{}/{}'.format(path, 'reward_record.txt')
-        with open(reward_record_file, 'w') as file:
-            for reward in reward_record:
-                file.write("{}\n".format(reward))
-
-        class_file = '{}/maddpg.pkl'.format(path)
-        with open(class_file, 'wb') as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-
-    def load(self, path):
-        class_file = '{}/maddpg.pkl'.format(path)
-        with open(class_file, 'rb') as f:
-            self = pickle.load(f)
