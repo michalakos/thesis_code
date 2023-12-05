@@ -1,10 +1,10 @@
-NUM_USERS = 5         # (edge users)
+NUM_USERS = 3         # (edge users)
 X_LENGTH = 100        # m (horizontal length of area)
 Y_LENGTH = 100        # m (vertical length of area)
 
 # TODO: FIX NOISE STD
 # NOISE_STD = -174      # dBm/Hz (AWGN)
-NOISE_STD = 0
+NOISE_STD = 10**(-15)
 FADE_STD = 8          # dB (path loss)
 B = 1000000           # Hz (bandwidth)
 P_MAX = 24            # dBm (max power)

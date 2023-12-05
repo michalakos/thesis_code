@@ -129,13 +129,6 @@ class Environment:
 
       if sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH and max(offload_time, execution_time) < T_MAX:
         res += 1
-      # string = ''
-      # if sec_data_rate_k_1 < SEC_RATE_TH:
-      #   string += '1'
-      # if sec_data_rate_k_2 < SEC_RATE_TH:
-      #   string += '2'
-      # if max(offload_time, execution_time) > T_MAX:
-      #   string += '3'
       # if (sec_data_rate_k_1 < SEC_RATE_TH):
       #   res += 1
       # if (sec_data_rate_k_2 < SEC_RATE_TH):
@@ -180,8 +173,8 @@ class Environment:
   # return the energy a user requires to offload their task
   def _energy_offload_k(self, k, action):
     offload_time = self._offload_time_k(k, action)
-    user_p_tot, _, _ = self.get_action_k(k, action)
-    user_p_tot *= self._dbm_to_watts(P_MAX)
+    user_p_1, user_p_2, _ = self.get_action_k(k, action)
+    user_p_tot = self._dbm_to_watts(P_MAX/2) * (user_p_1 + user_p_2)
     # print('power {}, off time {}'.format(user_p_tot, offload_time))
     return user_p_tot * offload_time
   
@@ -192,8 +185,8 @@ class Environment:
 
   # return the secure data rates for user k
   def _secure_data_rate_k(self, k, action):
-    user_p_tot, user_p1_ratio, _ = self.get_action_k(k, action)
-    user_p1, user_p2 = self._powers_from_action(user_p_tot, user_p1_ratio)
+    p1_r, p2_r, _ = self.get_action_k(k, action)
+    user_p1, user_p2 = self._powers_from_action(p1_r, p2_r)
     channel_bs, channel_eve, _ = self.get_state_k(k)
 
     # calculate first message's achievable rate of decoding at BS
@@ -234,17 +227,16 @@ class Environment:
     decoding_order = self.dec_order
     interference = 0
     for user in decoding_order[k+1:]:
-      p_total_ratio, p1_ratio, _ = self.get_action_k(user, action)
-      user_p1, user_p2 = self._powers_from_action(p_total_ratio, p1_ratio)
+      p1_r, p2_r, _ = self.get_action_k(user, action)
+      user_p1, user_p2 = self._powers_from_action(p1_r, p2_r)
       channel_bs, _, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_bs
     return interference
   
 
-  def _powers_from_action(self, p_total_ratio, p1_ratio):
-    p_total = p_total_ratio * P_MAX
-    p1 = p_total * p1_ratio
-    p2 = p_total - p1
+  def _powers_from_action(self, p1_ratio, p2_ratio):
+    p1 = p1_ratio * P_MAX/2
+    p2 = p2_ratio * P_MAX/2
     return p1, p2
 
 
@@ -254,8 +246,8 @@ class Environment:
     for user in range(self.N_users):
       if user == k:
         continue
-      p_tot_ratio, p1_ratio, _ = self.get_action_k(user, action)
-      user_p1, user_p2 = self._powers_from_action(p_tot_ratio, p1_ratio)
+      p_1, p_2, _ = self.get_action_k(user, action)
+      user_p1, user_p2 = self._powers_from_action(p_1, p_2)
       _, channel_eve, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_eve
     return interference
