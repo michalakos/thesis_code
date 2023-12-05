@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from constants import *
 
-#TODO: correct channel gains
+
 class Environment:
   # create an instance of Env
   def __init__(self, N_users=NUM_USERS, x_length=X_LENGTH, y_length=Y_LENGTH,
@@ -42,7 +42,6 @@ class Environment:
 
   # return a list of channel gains - one for each user -
   # for the user's channel to the reference point (BS or Eve)
-  # TODO: fix equation based on matlab code
   def _get_channel_gains(self, ref_point):
     user_gains = []
     for user in self.user_coords:
@@ -55,7 +54,6 @@ class Environment:
       # gain = 1 / path loss
       user_gain = np.power(10, -user_path_loss/10)
       user_gains.append(user_gain)
-    # print('user_gains to {}: {}'.format(ref_point, user_gains))
     return user_gains
 
 
@@ -124,6 +122,10 @@ class Environment:
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
 
+      # _, _, split = self.get_action_k(user, action)
+      # print('User {}: sec_rate_1 = {}, sec_rate_2 = {}, T_off = {}, T_ex = {}, offload = {}'
+      #       .format(user, sec_data_rate_k_1, sec_data_rate_k_2,offload_time, execution_time, split*self.task_sizes[user]))
+
       if sec_data_rate_k_1 < SEC_RATE_TH and sec_data_rate_k_2 < SEC_RATE_TH and max(offload_time, execution_time) < T_MAX:
         res += 1
       # if (sec_data_rate_k_1 < SEC_RATE_TH):
@@ -133,7 +135,6 @@ class Environment:
       # if (max(offload_time, execution_time) > T_MAX):
       #   res += 1
     # return -np.tanh(res / self.N_users) + 1
-    # print("sec_data_rates: ({},{})\tT_off:{}\tT_ex:{}".format(sec_data_rate_k_1, sec_data_rate_k_2, offload_time, execution_time))
     return res / self.N_users
 
 

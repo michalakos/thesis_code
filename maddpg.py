@@ -92,23 +92,15 @@ class MADDPG:
             self.critic_optimizer[agent].zero_grad()
             current_Q = self.critics[agent](whole_state, whole_action)
 
-            non_final_next_actions = [
-                self.actors_target[i](non_final_next_states[:,
-                                                            i,
-                                                            :]) for i in range(
-                                                                self.n_agents)]
+            non_final_next_actions = [self.actors_target[i](non_final_next_states[:,i,:]) for i in range(self.n_agents)]
             non_final_next_actions = th.stack(non_final_next_actions)
-            non_final_next_actions = (
-                non_final_next_actions.transpose(0,
-                                                 1).contiguous())
+            non_final_next_actions = (non_final_next_actions.transpose(0,1).contiguous())
 
-            target_Q = th.zeros(
-                self.batch_size).type(FloatTensor)
+            target_Q = th.zeros(self.batch_size).type(FloatTensor)
 
             target_Q[non_final_mask] = self.critics_target[agent](
                 non_final_next_states.view(-1, self.n_agents * self.n_states),
-                non_final_next_actions.view(-1,
-                                            self.n_agents * self.n_actions)
+                non_final_next_actions.view(-1, self.n_agents * self.n_actions)
             ).squeeze()
             # scale_reward: to scale reward in Q functions
             target_Q = target_Q.unsqueeze(1)
@@ -144,19 +136,15 @@ class MADDPG:
 
     def select_action(self, state_batch):
         # state_batch: n_agents x state_dim
-        actions = th.zeros(
-            self.n_agents,
-            self.n_actions)
+        actions = th.zeros(self.n_agents, self.n_actions)
         FloatTensor = th.cuda.FloatTensor if self.use_cuda else th.FloatTensor
         for i in range(self.n_agents):
             sb = state_batch[i, :].detach()
             act = self.local_actors[i](sb.unsqueeze(0)).squeeze()
 
-            act += th.from_numpy(
-                np.random.randn(self.n_actions) * self.var[i]).type(FloatTensor)
+            act += th.from_numpy(np.random.randn(self.n_actions) * self.var[i]).type(FloatTensor)
 
-            if self.episode_done > self.episodes_before_train and\
-               self.var[i] > 0.02:
+            if self.episode_done > self.episodes_before_train and self.var[i] > 0.02:
                 self.var[i] *= 0.99999
             act = th.clamp(act, 0, 1.0)
 
