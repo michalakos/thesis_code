@@ -62,7 +62,8 @@ class Environment:
   def _state_update(self):
     # task bit size around 1 to 3 * 10^5 bits
     self.task_sizes = [int(np.random.normal(DATA_ARRIVAL_RATE*T_MAX, DATA_ARRIVAL_RATE*T_MAX*0.05)) for _ in range(self.N_users)]
-    self.dec_order = [x for x in range(self.N_users)]
+    # self.dec_order = [x for x in range(self.N_users)]
+    self.dec_order = sorted(range(len(self.user_gains_bs)), key=lambda k: self.user_gains_bs[k])
     self.state = np.array(tuple(zip(self.user_gains_bs, self.user_gains_eve, self.task_sizes)))
     # self.state = self.user_gains_bs + self.user_gains_eve +\
     #   self.task_sizes + self.dec_order
@@ -101,7 +102,7 @@ class Environment:
   # QoS ranges from 0 (no requirements met)
   # to 1 (all requirement met)
   def _reward(self, action):
-    return np.exp(-self._energy_sum(action)) * self._qos(action)
+    return np.exp(-self._energy_sum(action)/self.N_users) * self._qos(action)
 
 
   # return the total energy consumed in the last timeslot
@@ -117,8 +118,7 @@ class Environment:
   def _qos(self, action):
     res = 0
     for user in range(self.N_users):
-      sec_data_rate_k_1, sec_data_rate_k_2 = \
-        self._secure_data_rate_k(user, action)
+      sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(user, action)
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
 
@@ -129,20 +129,7 @@ class Environment:
 
       if sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH and max(offload_time, execution_time) < T_MAX:
         res += 1
-      # string = ''
-      # if sec_data_rate_k_1 < SEC_RATE_TH:
-      #   string += '1'
-      # if sec_data_rate_k_2 < SEC_RATE_TH:
-      #   string += '2'
-      # if max(offload_time, execution_time) > T_MAX:
-      #   string += '3'
-      # if (sec_data_rate_k_1 < SEC_RATE_TH):
-      #   res += 1
-      # if (sec_data_rate_k_2 < SEC_RATE_TH):
-      #   res += 1
-      # if (max(offload_time, execution_time) > T_MAX):
-      #   res += 1
-    # return -np.tanh(res / self.N_users) + 1
+        
     return res / self.N_users
 
 

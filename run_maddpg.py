@@ -1,10 +1,10 @@
-from environment import Environment
+from environment2 import Environment
 from maddpg import MADDPG
 import numpy as np
 import torch as th
 from datetime import datetime
 from constants import *
-from model_utils import save_model, load_model
+from model_utils import save_model, load_model, load_rew_rec
 
 
 load = False
@@ -12,7 +12,7 @@ evaluate = False
 
 path = PATH
 path = '{}/{}'.format(path, datetime.now())
-load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-04 15:34:31.473285/ep_2000'
+load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-06 09:29:36.516230/ep_500'
 
 
 env = Environment()
@@ -29,6 +29,7 @@ episodes_before_train = EPISODES_BEFORE_TRAIN
 
 if load:
     maddpg = load_model(load_path)
+    reward_record = load_rew_rec(load_path)
 else:
     maddpg = MADDPG(n_agents, n_states, n_actions, batch_size, capacity, episodes_before_train)
 
