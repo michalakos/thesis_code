@@ -5,6 +5,7 @@ import torch as th
 from datetime import datetime
 from constants import *
 from model_utils import save_model, load_model, load_rew_rec
+import os
 
 
 load = False
@@ -13,6 +14,8 @@ evaluate = False
 path = PATH
 path = '{}/{}'.format(path, datetime.now())
 load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-06 09:29:36.516230/ep_500'
+if not os.path.exists(path):
+    os.makedirs(path)
 
 
 env = Environment()
@@ -56,6 +59,7 @@ if evaluate:
                 next_obs = None
             total_reward += reward.sum()
             obs = next_obs
+            print(env.get_stats())
         print('Mean reward = {}'.format(total_reward/max_steps))
         
 else:
@@ -67,6 +71,11 @@ else:
         if isinstance(obs, np.ndarray):
             obs = th.from_numpy(obs).float()
         total_reward = 0.0
+
+        # episode_stats = env.get_stats()
+        # for user in range(len(episode_stats)):
+        #     for key in episode_stats[user]:
+        #         episode_stats[user][key] = 0
 
         for t in range(max_steps):
             obs = obs.type(FloatTensor)
@@ -86,6 +95,23 @@ else:
             obs = next_obs
 
             c_loss, a_loss = maddpg.update_policy()
+
+            if (t+1)%100 == 0:
+                episode_stats = env.get_stats()
+                with open(path+'/logs.txt', 'a') as f:
+                    print('{}/{}\t{}/{}'.format(t+1, max_steps, i_episode+1, n_episode), file=f)
+                    for user_stats in episode_stats:
+                        print(user_stats, file=f)
+                    print('\n', file=f)
+        #     stats = env.get_stats()
+        #     for user in range(len(episode_stats)):
+        #         for key in episode_stats[user]:
+        #             episode_stats[user][key] += stats[user][key]
+
+        # for user in range(len(episode_stats)):
+        #     for key in episode_stats[user]:
+        #         episode_stats[user][key] /= max_steps
+        
         maddpg.episode_done += 1
         print('Episode: %d, mean reward = %f, epsilon = %f' % (i_episode, total_reward/max_steps, maddpg.var[0]))
         reward_record.append(total_reward/max_steps)

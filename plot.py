@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
-STEPS = 100
+STEPS = 20
 
 
-file_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-06 13:00:54.272742/ep_1500/reward_record.txt'
+file_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-19 21:51:58.389071/ep_2000/reward_record.txt'
 
 numbers = []
 with open(file_path, 'rb') as file:
