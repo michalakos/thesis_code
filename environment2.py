@@ -82,7 +82,7 @@ class Environment:
   # return new state
   def _state_update(self):
     self.task_sizes = [int(np.random.normal(DATA_ARRIVAL_RATE*T_MAX, DATA_ARRIVAL_RATE*T_MAX*0.05)) for _ in range(self.N_users)]
-    self.dec_order = sorted(range(len(self.user_gains_bs)), key=lambda k: self.user_gains_bs[k])
+    self.dec_order = sorted(range(len(self.user_gains_bs)), key=lambda k: self.user_gains_bs[k]/self.user_gains_eve[k], reverse=True)
     self.state = np.array(tuple(zip(self.user_gains_bs, self.user_gains_eve, self.task_sizes)))
     return self.state
 
@@ -141,11 +141,12 @@ class Environment:
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
 
-      if sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH and \
-        max(offload_time, execution_time) < T_MAX:
+      # if sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH and \
+      #   max(offload_time, execution_time) < T_MAX:
+      p1, p2, split = self.get_action_k(user, action)
+      if max(offload_time, execution_time) < T_MAX:
         res += 1
 
-      p1, p2, split = self.get_action_k(user, action)
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
       self.stats[user]['sec_rate_2'] = sec_data_rate_k_2
       self.stats[user]['off_time'] = offload_time
@@ -168,6 +169,8 @@ class Environment:
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
       offload_time = user_split * task_total / (C * sec_data_rate_k)
+    elif user_split == 0:
+      offload_time = 0
     else:
       offload_time = T_MAX + 1000
     # print(p1, p2, user_split, sec_data_rate_k_1, sec_data_rate_k_2)
