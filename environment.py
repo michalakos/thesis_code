@@ -13,6 +13,23 @@ class Environment:
     self.x_length = x_length
     self.y_length = y_length
     self.fade_std = fade_std
+    # each stat contains
+    self.stats = []
+    for _ in range(self.N_users):
+      user_dict = {
+        "sec_rate_1": None,
+        "sec_rate_2": None,
+        "off_time": None,
+        "exec_time": None,
+        "p1": None,
+        "p2": None,
+        "P_tot": None,
+        'split': None,
+        "E_off": None,
+        "E_exec": None,
+        "E_tot": None,
+      }
+      self.stats.append(user_dict)
     self.reset()
 
 
@@ -40,6 +57,10 @@ class Environment:
     self.state = self._state_update()
 
 
+  def get_stats(self):
+    return self.stats
+
+
   # return a list of channel gains - one for each user -
   # for the user's channel to the reference point (BS or Eve)
   def _get_channel_gains(self, ref_point):
@@ -60,13 +81,9 @@ class Environment:
   # get new tasks
   # return new state
   def _state_update(self):
-    # task bit size around 1 to 3 * 10^5 bits
     self.task_sizes = [int(np.random.normal(DATA_ARRIVAL_RATE*T_MAX, DATA_ARRIVAL_RATE*T_MAX*0.05)) for _ in range(self.N_users)]
-    # self.dec_order = [x for x in range(self.N_users)]
-    self.dec_order = sorted(range(len(self.user_gains_bs)), key=lambda k: self.user_gains_bs[k])
+    self.dec_order = sorted(range(len(self.user_gains_bs)), key=lambda k: self.user_gains_bs[k]/self.user_gains_eve[k], reverse=True)
     self.state = np.array(tuple(zip(self.user_gains_bs, self.user_gains_eve, self.task_sizes)))
-    # self.state = self.user_gains_bs + self.user_gains_eve +\
-    #   self.task_sizes + self.dec_order
     return self.state
 
 
@@ -78,11 +95,8 @@ class Environment:
 
   # get user k's action
   # return tuple (p_k_1, p_k_2, s_k)
-  # action is structured as (action_user_1, action_user_2, ...)
-  # where action_user_k is: p_total_ratio_k, p_1_ratio_k, s_k
   def get_action_k(self, k, action):
     return action[k]
-    # return action[ACTION_DIM * k], action[ACTION_DIM * k + 1], action[ACTION_DIM * k + 2]
 
 
   # update state based on action and get new state and reward
@@ -102,15 +116,20 @@ class Environment:
   # QoS ranges from 0 (no requirements met)
   # to 1 (all requirement met)
   def _reward(self, action):
-    return np.exp(-self._energy_sum(action)/self.N_users) * self._qos(action)
+    return np.max(1-self._energy_sum(action), 0) * self._qos(action) * 100
+    # return np.exp(-self._energy_sum(action)/self.N_users) * self._qos(action) * 100
 
 
   # return the total energy consumed in the last timeslot
   def _energy_sum(self, action):
     energy_total = 0
     for user_k in range(self.N_users):
-      energy_total += self._energy_offload_k(user_k, action) +\
-        self._energy_execution_k(user_k, action)
+      e_off = self._energy_offload_k(user_k, action)
+      e_exec = self._energy_execution_k(user_k, action)
+      energy_total +=  e_off + e_exec
+      self.stats[user_k]['E_tot'] = e_off + e_exec
+      self.stats[user_k]['E_off'] = e_off
+      self.stats[user_k]['E_exec'] = e_exec
     return energy_total
 
 
@@ -122,20 +141,27 @@ class Environment:
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
 
-      # p_t, p_1, split = self.get_action_k(user, action)
-      # p1, p2 = self._powers_from_action(p_t, p_1)
-      # print('User {}: sec_rate_1 = {}, sec_rate_2 = {}, T_off = {}, T_ex = {}, offload = {}, p1 = {}, p2 = {}'
-      #       .format(user, sec_data_rate_k_1, sec_data_rate_k_2,offload_time, execution_time, split*self.task_sizes[user], p1, p2))
-
-      if sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH and max(offload_time, execution_time) < T_MAX:
+      # if sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH and \
+      #   max(offload_time, execution_time) < T_MAX:
+      p1, p2, split = self.get_action_k(user, action)
+      if max(offload_time, execution_time) < T_MAX:
         res += 1
-        
+
+      self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
+      self.stats[user]['sec_rate_2'] = sec_data_rate_k_2
+      self.stats[user]['off_time'] = offload_time
+      self.stats[user]['exec_time'] = execution_time
+      self.stats[user]['p1'] = p1
+      self.stats[user]['p2'] = p2
+      self.stats[user]['P_tot'] = p1 + p2
+      self.stats[user]['split'] = split
+
     return res / self.N_users
 
 
   # return offload time
   def _offload_time_k(self, k, action):
-    _, _, user_split = self.get_action_k(k, action)
+    p1, p2, user_split = self.get_action_k(k, action)
     _, _, task_total = self.get_state_k(k)
 
     # calculate the required time for offloading
@@ -143,8 +169,11 @@ class Environment:
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
       offload_time = user_split * task_total / (C * sec_data_rate_k)
+    elif user_split == 0:
+      offload_time = 0
     else:
       offload_time = T_MAX + 1000
+    # print(p1, p2, user_split, sec_data_rate_k_1, sec_data_rate_k_2)
     return offload_time
 
 
@@ -152,14 +181,15 @@ class Environment:
   def _execution_time_k(self, k, action):
     _, _, offload_task = self.get_action_k(k, action)
     _, _, task_total = self.get_state_k(k)
-    return (1 - offload_task) * task_total / FREQUENCY
+    exec_time = (1 - offload_task) * task_total / FREQUENCY
+    # print(offload_task, task_total, FREQUENCY, exec_time)
+    return exec_time
 
 
   # return the total energy consumed for execution of local task at user
   def _energy_execution_k(self, k, action):
     _, _, user_split = self.get_action_k(k, action)
     _, _, task_total = self.get_state_k(k)
-    # print('split {}, task {}'.format(user_split, task_total))
 
     return C_COEFF * (FREQUENCY ** 2) * (1 - user_split) * task_total
 
@@ -167,33 +197,37 @@ class Environment:
   # return the energy a user requires to offload their task
   def _energy_offload_k(self, k, action):
     offload_time = self._offload_time_k(k, action)
-    user_p_tot, _, _ = self.get_action_k(k, action)
-    user_p_tot *= self._dbm_to_watts(P_MAX)
+    user_p_1, user_p_2, _ = self.get_action_k(k, action)
+    user_p_tot = self._dbm_to_watts(P_MAX/2) * (user_p_1 + user_p_2)
     # print('power {}, off time {}'.format(user_p_tot, offload_time))
-    return user_p_tot * offload_time
+    return user_p_tot * offload_time if offload_time <= T_MAX else user_p_tot * T_MAX
   
 
   def _dbm_to_watts(self, y_dbm):
-    return 10**(y_dbm/10)/1000
+    return 10**((y_dbm-30)/10)
 
 
   # return the secure data rates for user k
   def _secure_data_rate_k(self, k, action):
-    user_p_tot, user_p1_ratio, _ = self.get_action_k(k, action)
-    user_p1, user_p2 = self._powers_from_action(user_p_tot, user_p1_ratio)
+    p1_r, p2_r, _ = self.get_action_k(k, action)
+    # user_p1, user_p2 = self._powers_from_action(p1_r, p2_r)
     channel_bs, channel_eve, _ = self.get_state_k(k)
+
+    user_p1 = self._dbm_to_watts(P_MAX/2) * p1_r
+    user_p2 = self._dbm_to_watts(P_MAX/2) * p2_r
+    noise = self._dbm_to_watts(NOISE_STD)
 
     # calculate first message's achievable rate of decoding at BS
     bs_interference = self._interference_bs_k(k, action)
     log_arg = 1 + channel_bs * user_p1 / \
-        (bs_interference + channel_bs * user_p2 + NOISE_STD)
+        (bs_interference + channel_bs * user_p2 + noise * B)
     rate_bs_1 = B * log(log_arg, 2)
 
 
     # calculate first message's achievable rate of decoding at eavesdropper
     eve_interference = self._interference_eve_k(k, action)
     log_arg = 1 + channel_eve * user_p1 / \
-        (eve_interference + channel_eve * user_p2 + NOISE_STD)
+        (eve_interference + channel_eve * user_p2 + noise * B)
     rate_eve_1 = B * log(log_arg, 2)
 
     secure_data_rate_1 = max(0, rate_bs_1 - rate_eve_1)   # first message
@@ -201,12 +235,12 @@ class Environment:
     # calculate second message's achievable rates
     # base station
     log_arg = 1 + channel_bs * user_p2 / \
-        (bs_interference + NOISE_STD)
+        (bs_interference + noise * B)
     rate_bs_2 = B * log(log_arg, 2)
 
     # eavesdropper
     log_arg = 1 + channel_eve * user_p2 / \
-        (eve_interference + channel_eve * user_p1 + NOISE_STD)
+        (eve_interference + channel_eve * user_p1 + noise * B)
     rate_eve_2 = B * log(log_arg, 2)
 
     secure_data_rate_2 = max(0, rate_bs_2 - rate_eve_2)   # second message
@@ -221,18 +255,19 @@ class Environment:
     decoding_order = self.dec_order
     interference = 0
     for user in decoding_order[k+1:]:
-      p_total_ratio, p1_ratio, _ = self.get_action_k(user, action)
-      user_p1, user_p2 = self._powers_from_action(p_total_ratio, p1_ratio)
+      p1_r, p2_r, _ = self.get_action_k(user, action)
+      # user_p1, user_p2 = self._powers_from_action(p1_r, p2_r)
+      user_p1 = self._dbm_to_watts(P_MAX/2) * p1_r
+      user_p2 = self._dbm_to_watts(P_MAX/2) * p2_r
       channel_bs, _, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_bs
     return interference
   
 
-  def _powers_from_action(self, p_total_ratio, p1_ratio):
-    p_total = p_total_ratio * P_MAX
-    p1 = p_total * p1_ratio
-    p2 = p_total - p1
-    return p1, p2
+  # def _powers_from_action(self, p1_ratio, p2_ratio):
+  #   p1 = p1_ratio * P_MAX/2
+  #   p2 = p2_ratio * P_MAX/2
+  #   return p1, p2
 
 
   # calculate the interference to the eavesdropper for a user's signal
@@ -241,8 +276,9 @@ class Environment:
     for user in range(self.N_users):
       if user == k:
         continue
-      p_tot_ratio, p1_ratio, _ = self.get_action_k(user, action)
-      user_p1, user_p2 = self._powers_from_action(p_tot_ratio, p1_ratio)
+      p_1, p_2, _ = self.get_action_k(user, action)
+      user_p1 = self._dbm_to_watts(P_MAX/2) * p_1
+      user_p2 = self._dbm_to_watts(P_MAX/2) * p_2
       _, channel_eve, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_eve
     return interference

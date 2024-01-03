@@ -1,4 +1,4 @@
-from environment2 import Environment
+from environment import Environment
 from maddpg import MADDPG
 import numpy as np
 import torch as th
