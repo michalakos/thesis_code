@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 STEPS = 20
 
 
-file_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-19 21:51:58.389071/ep_2000/reward_record.txt'
+file_path = '/home/michalakos/Thesis/training_results/2024-01-03 14_55_21.557416/ep_2000/reward_record.txt'
 
 numbers = []
 with open(file_path, 'rb') as file:

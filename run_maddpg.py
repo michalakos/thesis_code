@@ -99,7 +99,7 @@ else:
             if (t+1)%100 == 0:
                 episode_stats = env.get_stats()
                 with open(path+'/logs.txt', 'a') as f:
-                    print('{}/{}\t{}/{}'.format(t+1, max_steps, i_episode+1, n_episode), file=f)
+                    print('{}/{}\t{}/{}'.format(t+1, max_steps, i_episode, n_episode), file=f)
                     for user_stats in episode_stats:
                         print(user_stats, file=f)
                     print('\n', file=f)
