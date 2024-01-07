@@ -145,7 +145,7 @@ class MADDPG:
             act += th.from_numpy(np.random.randn(self.n_actions) * self.var[i]).type(FloatTensor)
 
             if self.episode_done > self.episodes_before_train and self.var[i] > 0.01:
-                self.var[i] *= 0.99998
+                self.var[i] -= 0.3/100000
             act = th.clamp(act, 0, 1.0)
 
             actions[i, :] = act

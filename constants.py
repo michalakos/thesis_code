@@ -1,6 +1,6 @@
 NUM_USERS = 3         # (edge users)
-X_LENGTH = 100        # m (horizontal length of area)
-Y_LENGTH = 100        # m (vertical length of area)
+X_LENGTH = 10        # m (horizontal length of area)
+Y_LENGTH = 10        # m (vertical length of area)
 
 NOISE_STD = -174      # dBm/Hz (AWGN)
 FADE_STD = 8          # dB (path loss)

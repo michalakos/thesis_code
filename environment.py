@@ -28,6 +28,8 @@ class Environment:
         "E_off": None,
         "E_exec": None,
         "E_tot": None,
+        "bs_gain": None,
+        "eve_gain": None,
       }
       self.stats.append(user_dict)
     self.reset()
@@ -141,10 +143,9 @@ class Environment:
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
 
-      # if sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH and \
-      #   max(offload_time, execution_time) < T_MAX:
       p1, p2, split = self.get_action_k(user, action)
-      if max(offload_time, execution_time) < T_MAX:
+      if max(offload_time, execution_time) < T_MAX and \
+          sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH:
         res += 1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
@@ -155,6 +156,8 @@ class Environment:
       self.stats[user]['p2'] = p2
       self.stats[user]['P_tot'] = p1 + p2
       self.stats[user]['split'] = split
+      self.stats[user]['bs_gain'] = self.user_gains_bs[user]
+      self.stats[user]['eve_gain'] = self.user_gains_eve[user]
 
     return res / self.N_users
 
@@ -262,12 +265,6 @@ class Environment:
       channel_bs, _, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_bs
     return interference
-  
-
-  # def _powers_from_action(self, p1_ratio, p2_ratio):
-  #   p1 = p1_ratio * P_MAX/2
-  #   p2 = p2_ratio * P_MAX/2
-  #   return p1, p2
 
 
   # calculate the interference to the eavesdropper for a user's signal
