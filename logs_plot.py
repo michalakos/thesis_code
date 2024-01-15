@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import json
-from constants import NUM_USERS
-STEPS = 50
+STEPS = 10
 
-file = '/home/michalakos/Thesis/training_results/2024-01-03 14_55_21.557416/logs.txt'
-plotting_value = 'P_tot'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-01-15 11:45:31.913997'
+plotting_value = 'bs_gain'
 
-num_users = NUM_USERS
+num_users = 3
 cur_user = 0
 
 plot_values = [[] for _ in range(num_users)]

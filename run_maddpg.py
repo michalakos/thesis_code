@@ -71,12 +71,7 @@ else:
         if isinstance(obs, np.ndarray):
             obs = th.from_numpy(obs).float()
         total_reward = 0.0
-
-        # episode_stats = env.get_stats()
-        # for user in range(len(episode_stats)):
-        #     for key in episode_stats[user]:
-        #         episode_stats[user][key] = 0
-
+        
         for t in range(max_steps):
             obs = obs.type(FloatTensor)
             action = maddpg.select_action(obs).data.cpu()
@@ -103,18 +98,10 @@ else:
                     for user_stats in episode_stats:
                         print(user_stats, file=f)
                     print('\n', file=f)
-        #     stats = env.get_stats()
-        #     for user in range(len(episode_stats)):
-        #         for key in episode_stats[user]:
-        #             episode_stats[user][key] += stats[user][key]
-
-        # for user in range(len(episode_stats)):
-        #     for key in episode_stats[user]:
-        #         episode_stats[user][key] /= max_steps
         
         maddpg.episode_done += 1
         print('Episode: %d, mean reward = %f, epsilon = %f' % (i_episode, total_reward/max_steps, maddpg.var[0]))
-        reward_record.append(total_reward/max_steps)
+        reward_record.append((total_reward/max_steps, maddpg.var[0]))
 
         if maddpg.episode_done == maddpg.episodes_before_train:
             print('Training now begins...')

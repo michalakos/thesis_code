@@ -19,8 +19,10 @@ class Environment:
       user_dict = {
         "sec_rate_1": None,
         "sec_rate_2": None,
+        "sec_rate_sum": None,
         "off_time": None,
         "exec_time": None,
+        "max_time": None,
         "p1": None,
         "p2": None,
         "P_tot": None,
@@ -32,6 +34,7 @@ class Environment:
         "eve_gain": None,
       }
       self.stats.append(user_dict)
+
     self.reset()
 
 
@@ -40,8 +43,7 @@ class Environment:
   def reset(self):
     self.task_sizes = []
     self.bs_coords = (0,0)
-    self.eve_coords = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
-                      randint(-self.y_length/2*100, self.y_length/2*100)/100)
+    self.eve_coords = (100, 100)
 
     # randomly place users in grid
     self.user_coords = []
@@ -77,6 +79,7 @@ class Environment:
       # gain = 1 / path loss
       user_gain = np.power(10, -user_path_loss/10)
       user_gains.append(user_gain)
+      
     return user_gains
 
 
@@ -86,6 +89,7 @@ class Environment:
     self.task_sizes = [int(np.random.normal(DATA_ARRIVAL_RATE*T_MAX, DATA_ARRIVAL_RATE*T_MAX*0.05)) for _ in range(self.N_users)]
     self.dec_order = sorted(range(len(self.user_gains_bs)), key=lambda k: self.user_gains_bs[k]/self.user_gains_eve[k], reverse=True)
     self.state = np.array(tuple(zip(self.user_gains_bs, self.user_gains_eve, self.task_sizes)))
+
     return self.state
 
 
@@ -106,6 +110,7 @@ class Environment:
     # reward calculation is dependent on the current state
     reward = self._reward(action)
     self.state = self._state_update()
+
     return self.state, reward
   
 
@@ -118,8 +123,54 @@ class Environment:
   # QoS ranges from 0 (no requirements met)
   # to 1 (all requirement met)
   def _reward(self, action):
-    return np.max(1-self._energy_sum(action), 0) * self._qos(action) * 100
-    # return np.exp(-self._energy_sum(action)/self.N_users) * self._qos(action) * 100
+    en_sum = self._energy_sum(action)
+
+    mean_time = 0
+    for user in range(self.N_users):
+      offload_time = self._offload_time_k(user, action)
+      execution_time = self._execution_time_k(user, action)
+      mean_time += max(offload_time, execution_time)
+    mean_time /= self.N_users
+
+    if en_sum == 0:
+      en_sum = 10**-20
+    if mean_time == 0:
+      mean_time = 10**-20
+
+    l1 = 2
+    l2 = 0.5
+    omega = 0.5
+    c = 0.1
+
+    return (1-omega) * l1 * self._qos(action) - omega * l2 * np.log(en_sum) - omega * np.log(mean_time) + c
+
+
+  # quality of service indicator, ranges from 0 (bad) to 1 (great)
+  def _qos(self, action):
+    res = 0
+    for user in range(self.N_users):
+      sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(user, action)
+      offload_time = self._offload_time_k(user, action)
+      execution_time = self._execution_time_k(user, action)
+
+      p1, p2, split = self.get_action_k(user, action)
+      if sec_data_rate_k_1 + sec_data_rate_k_2 > SEC_RATE_TH:
+        res += 1
+
+      self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
+      self.stats[user]['sec_rate_2'] = sec_data_rate_k_2
+      self.stats[user]['sec_rate_sum'] = sec_data_rate_k_1 + sec_data_rate_k_2
+      self.stats[user]['off_time'] = offload_time
+      self.stats[user]['exec_time'] = execution_time
+      self.stats[user]['max_time'] = max(offload_time, execution_time)
+      self.stats[user]['p1'] = p1
+      self.stats[user]['p2'] = p2
+      self.stats[user]['P_tot'] = (p1 + p2) * P_MAX / 2
+      self.stats[user]['split'] = split
+      self.stats[user]['bs_gain'] = self.user_gains_bs[user]
+      self.stats[user]['eve_gain'] = self.user_gains_eve[user]
+
+    return res / self.N_users
 
 
   # return the total energy consumed in the last timeslot
@@ -132,39 +183,13 @@ class Environment:
       self.stats[user_k]['E_tot'] = e_off + e_exec
       self.stats[user_k]['E_off'] = e_off
       self.stats[user_k]['E_exec'] = e_exec
+
     return energy_total
-
-
-  # quality of service indicator, ranges from 0 (bad) to 1 (great)
-  def _qos(self, action):
-    res = 0
-    for user in range(self.N_users):
-      sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(user, action)
-      offload_time = self._offload_time_k(user, action)
-      execution_time = self._execution_time_k(user, action)
-
-      p1, p2, split = self.get_action_k(user, action)
-      if max(offload_time, execution_time) < T_MAX and \
-          sec_data_rate_k_1 > SEC_RATE_TH and sec_data_rate_k_2 > SEC_RATE_TH:
-        res += 1
-
-      self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
-      self.stats[user]['sec_rate_2'] = sec_data_rate_k_2
-      self.stats[user]['off_time'] = offload_time
-      self.stats[user]['exec_time'] = execution_time
-      self.stats[user]['p1'] = p1
-      self.stats[user]['p2'] = p2
-      self.stats[user]['P_tot'] = p1 + p2
-      self.stats[user]['split'] = split
-      self.stats[user]['bs_gain'] = self.user_gains_bs[user]
-      self.stats[user]['eve_gain'] = self.user_gains_eve[user]
-
-    return res / self.N_users
 
 
   # return offload time
   def _offload_time_k(self, k, action):
-    p1, p2, user_split = self.get_action_k(k, action)
+    _, _, user_split = self.get_action_k(k, action)
     _, _, task_total = self.get_state_k(k)
 
     # calculate the required time for offloading
@@ -175,8 +200,8 @@ class Environment:
     elif user_split == 0:
       offload_time = 0
     else:
-      offload_time = T_MAX + 1000
-    # print(p1, p2, user_split, sec_data_rate_k_1, sec_data_rate_k_2)
+      offload_time = 4 * T_MAX
+
     return offload_time
 
 
@@ -185,7 +210,7 @@ class Environment:
     _, _, offload_task = self.get_action_k(k, action)
     _, _, task_total = self.get_state_k(k)
     exec_time = (1 - offload_task) * task_total / FREQUENCY
-    # print(offload_task, task_total, FREQUENCY, exec_time)
+
     return exec_time
 
 
@@ -202,7 +227,7 @@ class Environment:
     offload_time = self._offload_time_k(k, action)
     user_p_1, user_p_2, _ = self.get_action_k(k, action)
     user_p_tot = self._dbm_to_watts(P_MAX/2) * (user_p_1 + user_p_2)
-    # print('power {}, off time {}'.format(user_p_tot, offload_time))
+    
     return user_p_tot * offload_time if offload_time <= T_MAX else user_p_tot * T_MAX
   
 
@@ -213,7 +238,6 @@ class Environment:
   # return the secure data rates for user k
   def _secure_data_rate_k(self, k, action):
     p1_r, p2_r, _ = self.get_action_k(k, action)
-    # user_p1, user_p2 = self._powers_from_action(p1_r, p2_r)
     channel_bs, channel_eve, _ = self.get_state_k(k)
 
     user_p1 = self._dbm_to_watts(P_MAX/2) * p1_r
@@ -225,7 +249,6 @@ class Environment:
     log_arg = 1 + channel_bs * user_p1 / \
         (bs_interference + channel_bs * user_p2 + noise * B)
     rate_bs_1 = B * log(log_arg, 2)
-
 
     # calculate first message's achievable rate of decoding at eavesdropper
     eve_interference = self._interference_eve_k(k, action)
@@ -257,13 +280,14 @@ class Environment:
   def _interference_bs_k(self, k, action):
     decoding_order = self.dec_order
     interference = 0
+
     for user in decoding_order[k+1:]:
       p1_r, p2_r, _ = self.get_action_k(user, action)
-      # user_p1, user_p2 = self._powers_from_action(p1_r, p2_r)
       user_p1 = self._dbm_to_watts(P_MAX/2) * p1_r
       user_p2 = self._dbm_to_watts(P_MAX/2) * p2_r
       channel_bs, _, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_bs
+
     return interference
 
 
@@ -278,6 +302,7 @@ class Environment:
       user_p2 = self._dbm_to_watts(P_MAX/2) * p_2
       _, channel_eve, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_eve
+      
     return interference
 
 

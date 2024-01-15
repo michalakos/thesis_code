@@ -4,9 +4,9 @@ from copy import deepcopy
 from memory import ReplayMemory, Experience
 import torch.nn as nn
 from torch.optim import Adam
-from random_process import OrnsteinUhlenbeckProcess
 import numpy as np
-from constants import SCALE_REWARD, BETA
+from constants import SCALE_REWARD, BETA, DISCOUNT
+# from random_process import OrnsteinUhlenbeckProcess
 
 def soft_update(target, source, t):
     for target_param, source_param in zip(target.parameters(),
@@ -144,8 +144,8 @@ class MADDPG:
 
             act += th.from_numpy(np.random.randn(self.n_actions) * self.var[i]).type(FloatTensor)
 
-            if self.episode_done > self.episodes_before_train and self.var[i] > 0.01:
-                self.var[i] -= 0.3/100000
+            if self.episode_done > self.episodes_before_train and self.var[i] > 0.1:
+                self.var[i] *= DISCOUNT
             act = th.clamp(act, 0, 1.0)
 
             actions[i, :] = act
