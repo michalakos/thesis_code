@@ -101,7 +101,7 @@ else:
         
         maddpg.episode_done += 1
         print('Episode: %d, mean reward = %f, epsilon = %f' % (i_episode, total_reward/max_steps, maddpg.var[0]))
-        reward_record.append((total_reward/max_steps, maddpg.var[0]))
+        reward_record.append(total_reward/max_steps)
 
         if maddpg.episode_done == maddpg.episodes_before_train:
             print('Training now begins...')

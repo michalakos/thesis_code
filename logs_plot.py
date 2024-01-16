@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import json
 STEPS = 10
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-01-15 11:45:31.913997'
-plotting_value = 'bs_gain'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-01-16 01:14:44.212336/logs.txt'
+plotting_value = 'sec_rate_2'
 
 num_users = 3
 cur_user = 0

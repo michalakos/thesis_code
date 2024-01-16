@@ -132,17 +132,13 @@ class Environment:
       mean_time += max(offload_time, execution_time)
     mean_time /= self.N_users
 
-    if en_sum == 0:
-      en_sum = 10**-20
-    if mean_time == 0:
-      mean_time = 10**-20
+    l1 = 1000
+    l2 = 100
+    omega = 0.6
+    c = 0.5
 
-    l1 = 2
-    l2 = 0.5
-    omega = 0.5
-    c = 0.1
-
-    return (1-omega) * l1 * self._qos(action) - omega * l2 * np.log(en_sum) - omega * np.log(mean_time) + c
+    self._qos(action)
+    return -(1-omega) * l1 * en_sum - omega * l2 * mean_time + c
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
@@ -196,7 +192,7 @@ class Environment:
     sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(k, action)
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
-      offload_time = user_split * task_total / (C * sec_data_rate_k)
+      offload_time = min(user_split * task_total / (C * sec_data_rate_k), 4 * T_MAX)
     elif user_split == 0:
       offload_time = 0
     else:
