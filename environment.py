@@ -134,11 +134,12 @@ class Environment:
 
     l1 = 1000
     l2 = 100
+    l3 = 10
     omega = 0.6
     c = 0.5
 
-    self._qos(action)
-    return -(1-omega) * l1 * en_sum - omega * l2 * mean_time + c
+    qos = self._qos(action)
+    return -(1 - omega) * l1 * en_sum - omega * l2 * mean_time + l3 * qos + c
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
@@ -150,7 +151,7 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
 
       p1, p2, split = self.get_action_k(user, action)
-      if sec_data_rate_k_1 + sec_data_rate_k_2 > SEC_RATE_TH:
+      if max(offload_time, execution_time) <= 2 * T_MAX:
         res += 1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1

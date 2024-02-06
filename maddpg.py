@@ -148,6 +148,11 @@ class MADDPG:
                 self.var[i] *= DISCOUNT
             act = th.clamp(act, 0, 1.0)
 
+            if act[-1] < 0.1:
+                offset_array = np.zeros(self.n_actions)
+                offset_array[-1] = 0.1
+                act += th.from_numpy(offset_array).type(FloatTensor)
+
             actions[i, :] = act
         self.steps_done += 1
 
