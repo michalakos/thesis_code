@@ -133,13 +133,13 @@ class Environment:
     mean_time /= self.N_users
 
     l1 = 1000
-    l2 = 100
-    l3 = 10
+    l2 = 10
+    l3 = 1
     omega = 0.6
-    c = 0.5
+    c = 0.1
 
     qos = self._qos(action)
-    return -(1 - omega) * l1 * en_sum - omega * l2 * mean_time + l3 * qos + c
+    return -(1 - omega) * l1 * en_sum - omega * l2 * mean_time + l3 * np.exp(2 * qos) + c
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)

@@ -2,9 +2,26 @@ import matplotlib.pyplot as plt
 import json
 STEPS = 10
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-01-17 16:41:49.112131/logs.txt'
-plotting_value = 'E_off'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-02-06 21:07:33.282435/logs.txt'
+values_dict = {1: 'sec_rate_1', 
+               2: 'sec_rate_2', 
+               3: 'sec_rate_sum', 
+               4: 'off_time', 
+               5: 'exec_time', 
+               6: 'max_time',
+               7: 'p1', 
+               8: 'p2', 
+               9: 'P_tot', 
+               10: 'split', 
+               11: 'E_off', 
+               12: 'E_exec', 
+               13: 'E_tot', 
+               14: 'bs_gain', 
+               15: 'eve_gain'}
 
+tag = 3
+
+plotting_value = values_dict[tag]
 num_users = 3
 cur_user = 0
 
@@ -37,4 +54,6 @@ for user in range(num_users):
             x.append(cum_sum/STEPS)
             cum_sum = 0
     plt.plot(x)
+    plt.xlabel('Steps (x{})'.format(STEPS))
+    plt.ylabel(values_dict[tag])
     plt.show()
