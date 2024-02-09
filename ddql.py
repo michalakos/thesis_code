@@ -3,7 +3,7 @@ from torch.optim import Adam
 import torch
 import torch.nn as nn
 import numpy as np
-from constants import NUM_USERS, STATE_DIM, ACTION_DIM, EPISODES, TIMESLOTS, CAPACITY, BATCH_SIZE
+from constants import *
 from environment import Environment
 from memory import ReplayMemory
 
@@ -73,7 +73,7 @@ action_size = ACTION_DIM
 num_episodes = EPISODES
 num_times = TIMESLOTS
 
-agents = [DQNAgent(state_size=state_size, action_size=action_size) for _ in range(num_agents)]
+agent = DQNAgent(state_size=state_size, action_size=action_size)
 env = Environment()
 
 for episode in range(1, num_episodes+1):
@@ -81,7 +81,11 @@ for episode in range(1, num_episodes+1):
   obs = env.get_state()
   obs = np.stack(obs)
   if isinstance(obs, np.ndarray):
-    obs = th.from_numpy(obs).float()
+    obs = torch.from_numpy(obs).float()
+  total_reward = 0.0
+  for t in range(num_times):
+    obs = obs.type(torch.FloatTensor)
+    action = agent.select_action(obs).data.cpu()
 
   for agent in agents:
     state = env.reset()

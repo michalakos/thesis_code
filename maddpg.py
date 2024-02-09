@@ -152,6 +152,8 @@ class MADDPG:
                 offset_array = np.zeros(self.n_actions)
                 offset_array[-1] = 0.1
                 act += th.from_numpy(offset_array).type(FloatTensor)
+            # if act[-1] < 0.01:
+            #     act = th.from_numpy(np.zeros(self.n_actions)).type(FloatTensor)
 
             actions[i, :] = act
         self.steps_done += 1
