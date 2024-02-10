@@ -79,9 +79,6 @@ class Environment:
           np.random.normal(0, 1/2), 
           np.random.normal(0, 1/2)) 
         for _ in range(self.N_users)]
-      # y = [abs(x) for x in self.rayleigh_bs]
-      # print('init')
-      # print(y)
     else:
       # FIXME: Ts same across the board
       rho = j0(2 * np.pi * DOPPLER_FREQ * 0.02)
@@ -95,8 +92,6 @@ class Environment:
                              np.random.normal((1-rho**2)/2), 
                              np.random.normal((1-rho**2)/2)) 
                            for x in self.rayleigh_eve]
-      # y = [abs(x) for x in self.rayleigh_bs]
-      # print(y)
 
 
   # return a list of channel gains - one for each user -
@@ -143,8 +138,8 @@ class Environment:
   # get user k's information from state
   # returns tuple (h_k_BS, h_k_eve, S_k, order_k)
   def get_state_k(self, k):
-    user_gain_bs = abs(self.rayleigh_bs[k])**2 + self.block_fade_bs[k]
-    user_gain_eve = abs(self.rayleigh_eve[k])**2 + self.block_fade_eve[k]
+    user_gain_bs = abs(self.rayleigh_bs[k])**2 * self.block_fade_bs[k]
+    user_gain_eve = abs(self.rayleigh_eve[k])**2 * self.block_fade_eve[k]
     return user_gain_bs, user_gain_eve, self.task_sizes[k]
 
 
