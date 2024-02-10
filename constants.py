@@ -5,6 +5,7 @@ NUM_USERS = 3         # (edge users)
 X_LENGTH = 50        # m (horizontal length of area)
 Y_LENGTH = 50        # m (vertical length of area)
 
+DOPPLER_FREQ = 10
 NOISE_STD = -174      # dBm/Hz (AWGN)
 FADE_STD = 8          # dB (path loss)
 B = 1000000           # Hz (bandwidth)

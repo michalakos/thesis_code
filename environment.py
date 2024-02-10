@@ -2,6 +2,7 @@ from random import randint
 from math import dist, log
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.special import j0
 from constants import *
 
 
@@ -54,8 +55,9 @@ class Environment:
       self.user_coords.append(user)
 
     # calculate channel gains for each user with respect to BS and eve
-    self.user_gains_bs = self._get_channel_gains(self.bs_coords)
-    self.user_gains_eve = self._get_channel_gains(self.eve_coords)
+    self._set_rayleigh(init=True)
+    self.block_fade_bs = self._set_block_fade(self.bs_coords)
+    self.block_fade_eve = self._set_block_fade(self.eve_coords)
 
     # randomize state of environment
     self.state = self._state_update()
@@ -63,32 +65,77 @@ class Environment:
 
   def get_stats(self):
     return self.stats
+  
+
+  def _set_rayleigh(self, init=False):
+    if init:
+      self.rayleigh_bs = [
+        complex(
+          np.random.normal(0, 1/2), 
+          np.random.normal(0, 1/2)) 
+        for _ in range(self.N_users)]
+      self.rayleigh_eve = [
+        complex(
+          np.random.normal(0, 1/2), 
+          np.random.normal(0, 1/2)) 
+        for _ in range(self.N_users)]
+      # y = [abs(x) for x in self.rayleigh_bs]
+      # print('init')
+      # print(y)
+    else:
+      # FIXME: Ts same across the board
+      rho = j0(2 * np.pi * DOPPLER_FREQ * 0.02)
+      self.rayleigh_bs = [rho * x + 
+                          complex(
+                            np.random.normal((1-rho**2)/2), 
+                            np.random.normal((1-rho**2)/2)) 
+                          for x in self.rayleigh_bs]
+      self.rayleigh_eve = [rho * x + 
+                           complex(
+                             np.random.normal((1-rho**2)/2), 
+                             np.random.normal((1-rho**2)/2)) 
+                           for x in self.rayleigh_eve]
+      # y = [abs(x) for x in self.rayleigh_bs]
+      # print(y)
 
 
   # return a list of channel gains - one for each user -
   # for the user's channel to the reference point (BS or Eve)
-  def _get_channel_gains(self, ref_point):
+  def _set_block_fade(self, ref_point):
     user_gains = []
     for user in self.user_coords:
       # path loss model: 128.1 + 37.6*log_10(d) (d is in km)
       user_path_loss = 128.1 + 37.6 *\
-       log(dist(ref_point, user) / 1000, 10) +\
-       np.random.normal(0, self.fade_std)
+      log(dist(ref_point, user) / 1000, 10) +\
+      np.random.normal(0, self.fade_std)
       
       # convert dB to linear
       # gain = 1 / path loss
       user_gain = np.power(10, -user_path_loss/10)
       user_gains.append(user_gain)
-      
     return user_gains
+      
+    
+  def get_gains_user_to_ref(self, ref):
+    channel_gains = []
+    for user in range(self.N_users):
+      if ref == 'bs':
+        channel_gain = abs(self.rayleigh_bs[user])**2 * self.block_fade_bs[user]
+      elif ref == 'eve':
+        channel_gain = abs(self.rayleigh_eve[user])**2 * self.block_fade_eve[user]
+      channel_gains.append(channel_gain)
+    return channel_gains
 
 
   # get new tasks
   # return new state
   def _state_update(self):
     self.task_sizes = [int(np.random.normal(DATA_ARRIVAL_RATE*T_MAX, DATA_ARRIVAL_RATE*T_MAX*0.05)) for _ in range(self.N_users)]
-    self.dec_order = sorted(range(len(self.user_gains_bs)), key=lambda k: self.user_gains_bs[k]/self.user_gains_eve[k], reverse=True)
-    self.state = np.array(tuple(zip(self.user_gains_bs, self.user_gains_eve, self.task_sizes)))
+    self._set_rayleigh()
+    user_gains_bs = self.get_gains_user_to_ref('bs')
+    user_gains_eve = self.get_gains_user_to_ref('eve')
+    self.dec_order = sorted(range(self.N_users), key=lambda k: user_gains_bs[k]/user_gains_eve[k], reverse=True)
+    self.state = np.array(tuple(zip(user_gains_bs, user_gains_eve, self.task_sizes)))
 
     return self.state
 
@@ -96,7 +143,9 @@ class Environment:
   # get user k's information from state
   # returns tuple (h_k_BS, h_k_eve, S_k, order_k)
   def get_state_k(self, k):
-    return self.user_gains_bs[k], self.user_gains_eve[k], self.task_sizes[k]
+    user_gain_bs = abs(self.rayleigh_bs[k])**2 + self.block_fade_bs[k]
+    user_gain_eve = abs(self.rayleigh_eve[k])**2 + self.block_fade_eve[k]
+    return user_gain_bs, user_gain_eve, self.task_sizes[k]
 
 
   # get user k's action
@@ -145,6 +194,9 @@ class Environment:
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
   def _qos(self, action):
     res = 0
+    user_gains_bs = self.get_gains_user_to_ref('bs')
+    user_gains_eve = self.get_gains_user_to_ref('eve')
+
     for user in range(self.N_users):
       sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(user, action)
       offload_time = self._offload_time_k(user, action)
@@ -164,8 +216,8 @@ class Environment:
       self.stats[user]['p2'] = p2
       self.stats[user]['P_tot'] = (p1 + p2) * P_MAX / 2
       self.stats[user]['split'] = split
-      self.stats[user]['bs_gain'] = self.user_gains_bs[user]
-      self.stats[user]['eve_gain'] = self.user_gains_eve[user]
+      self.stats[user]['bs_gain'] = user_gains_bs[user]
+      self.stats[user]['eve_gain'] = user_gains_eve[user]
 
     return res / self.N_users
 
