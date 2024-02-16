@@ -106,5 +106,5 @@ else:
         if maddpg.episode_done == maddpg.episodes_before_train:
             print('Training now begins...')
 
-        if i_episode % 500 == 0 or i_episode == n_episode:
+        if i_episode % 50 == 0 or i_episode == n_episode:
             save_model(path, maddpg, i_episode, reward_record)

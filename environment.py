@@ -4,12 +4,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import j0
 from constants import *
+from itertools import product
 
 
 class Environment:
   # create an instance of Env
   def __init__(self, N_users=NUM_USERS, x_length=X_LENGTH, y_length=Y_LENGTH,
-               fade_std=FADE_STD):
+               fade_std=FADE_STD, discreet=False):
     self.N_users = N_users
     self.x_length = x_length
     self.y_length = y_length
@@ -35,6 +36,13 @@ class Environment:
         "eve_gain": None,
       }
       self.stats.append(user_dict)
+    
+    if discreet:
+      p1 = np.linspace(0, 1, 5)
+      p2 = np.linspace(0, 1, 5)
+      split = np.linspace(0.05, 1, 5)
+      self.action_space = [x for x in product(p1, p2, split)]
+      self.action_size = len(self.action_space)
 
     self.reset()
 

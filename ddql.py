@@ -1,91 +1,141 @@
-from models import QNetwork
+from models import DQN
 from torch.optim import Adam
+from torch import FloatTensor
 import torch
 import torch.nn as nn
 import numpy as np
 from constants import *
 from environment import Environment
-from memory import ReplayMemory
+from memory import ReplayMemory, Experience
+import random
 
 
-class DQNAgent:
-  def __init__(self, state_size, action_size, learning_rate=0.001, gamma=0.99, epsilon_start=1.0, epsilon_decay=0.995, epsilon_end=0.01):
-    self.state_size = state_size
-    self.action_size = action_size
+device = torch.device("cpu")
+
+
+class DDQN:
+  def __init__(self, env, learning_rate=1e-4, gamma=0.99, tau=0.005,
+               epsilon_start=0.9, epsilon_decay=300000, epsilon_end=0.05):
+    self.capacity = CAPACITY
+    self.batch_size = 128
+    self.num_users = NUM_USERS
+    self.state_size = STATE_DIM * NUM_USERS
+    self.env = env
+    self.action_size = self.env.action_size
+
+    self.learning_rate = learning_rate
     self.epsilon_decay = epsilon_decay
     self.epsilon_start = epsilon_start
     self.epsilon_end = epsilon_end
     self.gamma = gamma
+    self.tau = tau
     self.steps = 0
-    self.num_users = NUM_USERS
-    self.capacity = CAPACITY
-    self.batch_size = BATCH_SIZE
+    self.episode_done = 0
+    self.episodes_before_train = 5
 
-    # Q-networks
-    self.policy_nets = [QNetwork(state_size, action_size) for _ in self.num_users]
-    self.target_nets = [QNetwork(state_size, action_size) for _ in self.num_users]
-    for user_i in range(self.num_users):
-      self.target_nets[user_i].load_state_dict(self.policy_nets[user_i].state_dict())
+    self.policy_net = [DQN(self.state_size, self.action_size) for _ in range(self.num_users)]
+    self.target_net = [DQN(self.state_size, self.action_size) for _ in range(self.num_users)]
+    for i in range(self.num_users):
+      self.target_net[i].load_state_dict(self.policy_net[i].state_dict())
 
-    # Optimizer
-    self.optimizers = [Adam(self.policy_nets[i].parameters(), lr=learning_rate, amsgrad=True) for i in range(self.num_users)]
-
-    self.memory = ReplayMemory(self.capacity)
+    self.optimizer = [torch.optim.AdamW(x.parameters(), lr=self.learning_rate, amsgrad=True) 
+                      for x in self.policy_net]
+    self.memory = [ReplayMemory(self.capacity) for _ in range(self.num_users)]
 
 
-  def select_action(self, state):
+  def select_action(self, state, user):
+    sample = np.random.random()
     eps_threshold = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * \
       np.exp(-1. * self.steps / self.epsilon_decay)
-    self.steps += 1
 
-    if np.random.rand() <= eps_threshold:
-      action = np.random.choice(self.action_size)
-    
+    if sample > eps_threshold:
+      with torch.no_grad():
+        return self.policy_net[user](torch.flatten(state)).argmax()
     else:
-      for user in range(self.num_users):
-        with torch.no_grad():
-          self.policy_nets[user](state).max(1).indices.view(1, 1)
-    
+      tmp_val = random.randrange(self.action_size)
+      return torch.tensor(tmp_val, device=device, dtype=torch.long)
 
-  def update_model(self, state, action, reward, next_state):
-    state = torch.tensor(state, dtype=torch.float32)
-    next_state = torch.tensor(next_state, dtype=torch.float32)
 
-    q_values = self.q_network(state)
-    next_q_values = self.target_q_network(next_state)
+  def optimize_model(self, user):
+    if len(self.memory[user]) < self.batch_size:
+      return
 
-    target = q_values.clone()
-    target[action] = reward + self.gamma * torch.max(next_q_values).item()
+    transitions = self.memory[user].sample(self.batch_size)
+    batch = Experience(*zip(*transitions))
 
-    loss = nn.MSELoss()(q_values, target)
-    self.optimizer.zero_grad()
+    non_final_mask = torch.ByteTensor(list(map(lambda s: s is not None,
+                                            batch.next_states))).bool()
+    non_final_next_states = torch.stack([s for s in batch.next_states if s is not None]).type(FloatTensor)
+    state_batch = torch.stack(batch.states)
+    reward_batch = torch.stack(batch.rewards)
+    action_batch = torch.stack(batch.actions)
+
+    whole_state = state_batch.view(self.batch_size, -1)
+    state_action_values = self.policy_net[user](whole_state)[:, action_batch]
+    next_state_values = torch.zeros(self.batch_size, device=device)
+    whole_non_final_next_states = non_final_next_states.view(self.batch_size, -1)
+    with torch.no_grad():
+      next_state_values[non_final_mask] = self.target_net[user](whole_non_final_next_states).max(1).values
+    expected_state_action_values = (next_state_values * self.gamma) + reward_batch
+
+    criterion = nn.SmoothL1Loss()
+    loss = criterion(state_action_values, expected_state_action_values)
+
+    self.optimizer[user].zero_grad()
     loss.backward()
-    self.optimizer.step()
+    torch.nn.utils.clip_grad_value_(self.policy_net[user].parameters(), 100)
+    self.optimizer[user].step()
 
+
+if __name__ == "__main__":
+  env = Environment(discreet=True)
+  ddqn = DDQN(env)
+
+  for i_episode in range(EPISODES):
+    obs = env.get_state()
+    # state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    obs = np.stack(obs)
+    if isinstance(obs, np.ndarray):
+        obs = torch.from_numpy(obs).float()
+    total_reward = 0
+
+    for t in range(TIMESLOTS):
+
+      obs = obs.type(FloatTensor)
+      ddqn.steps += 1
+      actions = []
+
+      for user in range(ddqn.num_users):
+        action = ddqn.select_action(obs, user)
+        actions.append(action)
+      total_action = [env.action_space[x] for x in actions]
+
+      obs_, reward = env.step(total_action)
+      reward = FloatTensor([reward]).type(FloatTensor)
+      obs_ = np.stack(obs_)
+      if isinstance(obs_, np.ndarray):
+          obs_ = torch.from_numpy(obs_).float()
+
+      if t == TIMESLOTS - 1:
+        next_state = None
+      else:
+        next_state = obs_
+        for user in range(ddqn.num_users):
+          ddqn.memory[user].push(obs.data, actions[user], next_state, reward)
+      
+      obs = next_state
+      total_reward += reward.sum()
+
+      for user in range(ddqn.num_users):
+        ddqn.optimize_model(user)
+        target_net_state_dict = ddqn.target_net[user].state_dict()
+        policy_net_state_dict = ddqn.policy_net[user].state_dict()
+        for key in policy_net_state_dict:
+          target_net_state_dict[key] = policy_net_state_dict[key] * ddqn.tau + target_net_state_dict[key] * (1 - ddqn.tau)
+        ddqn.target_net[user].load_state_dict(target_net_state_dict)
     
-  def update_target_network(self):
-    self.target_q_network.load_state_dict(self.q_network.state_dict())
+    mean_reward = total_reward / TIMESLOTS
+    print("Episode {} ended with reward {}".format(i_episode, mean_reward))
 
 
-num_agents = NUM_USERS
-state_size = STATE_DIM
-action_size = ACTION_DIM
-num_episodes = EPISODES
-num_times = TIMESLOTS
-
-agent = DQNAgent(state_size=state_size, action_size=action_size)
-env = Environment()
-
-for episode in range(1, num_episodes+1):
-  obs = env.reset()
-  obs = env.get_state()
-  obs = np.stack(obs)
-  if isinstance(obs, np.ndarray):
-    obs = torch.from_numpy(obs).float()
-  total_reward = 0.0
-  for t in range(num_times):
-    obs = obs.type(torch.FloatTensor)
-    action = agent.select_action(obs).data.cpu()
-
-  for agent in agents:
-    state = env.reset()
+      
