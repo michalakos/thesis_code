@@ -11,7 +11,7 @@ import os
 load = False
 evaluate = False
 
-path = PATH
+path = PATH + '/maddpg'
 path = '{}/{}'.format(path, datetime.now())
 load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-06 09:29:36.516230/ep_500'
 if not os.path.exists(path):

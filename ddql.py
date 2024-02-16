@@ -8,6 +8,9 @@ from constants import *
 from environment import Environment
 from memory import ReplayMemory, Experience
 import random
+from datetime import datetime
+import os
+from model_utils import save_model
 
 
 device = torch.device("cpu")
@@ -17,7 +20,7 @@ class DDQN:
   def __init__(self, env, learning_rate=1e-4, gamma=0.99, tau=0.005,
                epsilon_start=0.9, epsilon_decay=300000, epsilon_end=0.05):
     self.capacity = CAPACITY
-    self.batch_size = 128
+    self.batch_size = BATCH_SIZE
     self.num_users = NUM_USERS
     self.state_size = STATE_DIM * NUM_USERS
     self.env = env
@@ -31,7 +34,7 @@ class DDQN:
     self.tau = tau
     self.steps = 0
     self.episode_done = 0
-    self.episodes_before_train = 5
+    self.episodes_before_train = 20
 
     self.policy_net = [DQN(self.state_size, self.action_size) for _ in range(self.num_users)]
     self.target_net = [DQN(self.state_size, self.action_size) for _ in range(self.num_users)]
@@ -57,7 +60,7 @@ class DDQN:
 
 
   def optimize_model(self, user):
-    if len(self.memory[user]) < self.batch_size:
+    if self.episode_done < self.episodes_before_train:
       return
 
     transitions = self.memory[user].sample(self.batch_size)
@@ -88,10 +91,16 @@ class DDQN:
 
 
 if __name__ == "__main__":
+  path = PATH + '/ddqn'
+  path = '{}/{}'.format(path, datetime.now())
+  load_path = '/home/michalakos/Documents/Thesis/training_results/ddqn/2023-12-06 09:29:36.516230/ep_500'
+  if not os.path.exists(path):
+      os.makedirs(path)
   env = Environment(discreet=True)
   ddqn = DDQN(env)
 
-  for i_episode in range(EPISODES):
+  reward_record = []
+  for i_episode in range(1, EPISODES+1):
     obs = env.get_state()
     # state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     obs = np.stack(obs)
@@ -134,8 +143,22 @@ if __name__ == "__main__":
           target_net_state_dict[key] = policy_net_state_dict[key] * ddqn.tau + target_net_state_dict[key] * (1 - ddqn.tau)
         ddqn.target_net[user].load_state_dict(target_net_state_dict)
     
+      if (t+1)%100 == 0:
+        episode_stats = env.get_stats()
+        with open(path+'/logs.txt', 'a') as f:
+            print('{}/{}\t{}/{}'.format(t+1, TIMESLOTS, i_episode, EPISODES), file=f)
+            for user_stats in episode_stats:
+                print(user_stats, file=f)
+            print('\n', file=f)
     mean_reward = total_reward / TIMESLOTS
-    print("Episode {} ended with reward {}".format(i_episode, mean_reward))
+    ddqn.episode_done += 1
+    eps_threshold = ddqn.epsilon_end + (ddqn.epsilon_start - ddqn.epsilon_end) * \
+      np.exp(-1. * ddqn.steps / ddqn.epsilon_decay)
+    print('Episode: %d, mean reward = %f, epsilon = %f' % (i_episode, mean_reward, eps_threshold))
+    reward_record.append(mean_reward)
+
+    if i_episode % 100 == 0 or i_episode == EPISODES:
+            save_model(path, ddqn, i_episode, reward_record)
 
 
       
