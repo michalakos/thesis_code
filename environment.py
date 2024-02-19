@@ -34,6 +34,7 @@ class Environment:
         "E_tot": None,
         "bs_gain": None,
         "eve_gain": None,
+        "reward": None,
       }
       self.stats.append(user_dict)
     
@@ -161,6 +162,8 @@ class Environment:
   def step(self, action):
     # reward calculation is dependent on the current state
     reward = self._reward(action)
+    for user in range(self.N_users):
+      self.stats[user]['reward'] = reward
     self.state = self._state_update()
 
     return self.state, reward

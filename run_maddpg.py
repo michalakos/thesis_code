@@ -28,7 +28,7 @@ capacity = CAPACITY
 batch_size = BATCH_SIZE
 n_episode = EPISODES
 max_steps = TIMESLOTS
-episodes_before_train = EPISODES_BEFORE_TRAIN
+episodes_before_train = 5
 
 if load:
     maddpg = load_model(load_path)

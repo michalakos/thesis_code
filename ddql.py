@@ -18,9 +18,9 @@ device = torch.device("cpu")
 
 class DDQN:
   def __init__(self, env, learning_rate=1e-4, gamma=0.99, tau=0.005,
-               epsilon_start=0.9, epsilon_decay=300000, epsilon_end=0.05):
-    self.capacity = CAPACITY
-    self.batch_size = BATCH_SIZE
+               epsilon_start=0.9, epsilon_decay=500000, epsilon_end=0.05):
+    self.capacity = 100000
+    self.batch_size = 1024
     self.num_users = NUM_USERS
     self.state_size = STATE_DIM * NUM_USERS
     self.env = env
@@ -30,11 +30,12 @@ class DDQN:
     self.epsilon_decay = epsilon_decay
     self.epsilon_start = epsilon_start
     self.epsilon_end = epsilon_end
+    self.epsilon_threshold = 1
     self.gamma = gamma
     self.tau = tau
     self.steps = 0
     self.episode_done = 0
-    self.episodes_before_train = 20
+    self.episodes_before_train = 10
 
     self.policy_net = [DQN(self.state_size, self.action_size) for _ in range(self.num_users)]
     self.target_net = [DQN(self.state_size, self.action_size) for _ in range(self.num_users)]
@@ -43,15 +44,19 @@ class DDQN:
 
     self.optimizer = [torch.optim.AdamW(x.parameters(), lr=self.learning_rate, amsgrad=True) 
                       for x in self.policy_net]
-    self.memory = [ReplayMemory(self.capacity) for _ in range(self.num_users)]
+    self.memory = ReplayMemory(self.capacity)
 
 
   def select_action(self, state, user):
     sample = np.random.random()
-    eps_threshold = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * \
-      np.exp(-1. * self.steps / self.epsilon_decay)
+    
+    if self.episode_done >= self.episodes_before_train:
+      self.eps_threshold = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * \
+        np.exp(-1. * (self.steps - self.episodes_before_train * TIMESLOTS) / self.epsilon_decay) 
+    else: 
+      self.eps_threshold = self.epsilon_start
 
-    if sample > eps_threshold:
+    if sample > self.eps_threshold:
       with torch.no_grad():
         return self.policy_net[user](torch.flatten(state)).argmax()
     else:
@@ -63,7 +68,7 @@ class DDQN:
     if self.episode_done < self.episodes_before_train:
       return
 
-    transitions = self.memory[user].sample(self.batch_size)
+    transitions = self.memory.sample(self.batch_size)
     batch = Experience(*zip(*transitions))
 
     non_final_mask = torch.ByteTensor(list(map(lambda s: s is not None,
@@ -71,7 +76,8 @@ class DDQN:
     non_final_next_states = torch.stack([s for s in batch.next_states if s is not None]).type(FloatTensor)
     state_batch = torch.stack(batch.states)
     reward_batch = torch.stack(batch.rewards)
-    action_batch = torch.stack(batch.actions)
+    all_actions_batch = torch.tensor(batch.actions)
+    action_batch = torch.select(all_actions_batch, 1, user)
 
     whole_state = state_batch.view(self.batch_size, -1)
     state_action_values = self.policy_net[user](whole_state)[:, action_batch]
@@ -109,7 +115,6 @@ if __name__ == "__main__":
     total_reward = 0
 
     for t in range(TIMESLOTS):
-
       obs = obs.type(FloatTensor)
       ddqn.steps += 1
       actions = []
@@ -129,8 +134,7 @@ if __name__ == "__main__":
         next_state = None
       else:
         next_state = obs_
-        for user in range(ddqn.num_users):
-          ddqn.memory[user].push(obs.data, actions[user], next_state, reward)
+        ddqn.memory.push(obs.data, actions, next_state, reward)
       
       obs = next_state
       total_reward += reward.sum()
@@ -152,9 +156,8 @@ if __name__ == "__main__":
             print('\n', file=f)
     mean_reward = total_reward / TIMESLOTS
     ddqn.episode_done += 1
-    eps_threshold = ddqn.epsilon_end + (ddqn.epsilon_start - ddqn.epsilon_end) * \
-      np.exp(-1. * ddqn.steps / ddqn.epsilon_decay)
-    print('Episode: %d, mean reward = %f, epsilon = %f' % (i_episode, mean_reward, eps_threshold))
+    print('Episode: %d, mean reward = %f, epsilon = %f' % (i_episode, mean_reward, ddqn.eps_threshold))
+    print('Memory: {:7d}/{:7d}'.format(len(ddqn.memory), ddqn.capacity))
     reward_record.append(mean_reward)
 
     if i_episode % 100 == 0 or i_episode == EPISODES:

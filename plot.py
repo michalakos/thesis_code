@@ -3,7 +3,7 @@ from time import sleep
 STEPS = 10
 
 
-file_path = '/home/michalakos/Documents/Thesis/training_results/ddqn/2024-02-16 17:42:22.332840/ep_250/reward_record.txt'
+file_path = '/home/michalakos/Documents/Thesis/training_results/ddqn/2024-02-19 01:36:21.968252/ep_200/reward_record.txt'
 
 numbers = []
 with open(file_path, 'rb') as file:
