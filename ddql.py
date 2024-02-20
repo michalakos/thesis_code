@@ -18,9 +18,9 @@ device = torch.device("cpu")
 
 class DDQN:
   def __init__(self, env, learning_rate=1e-4, gamma=0.99, tau=0.005,
-               epsilon_start=0.9, epsilon_decay=500000, epsilon_end=0.05):
+               epsilon_start=0.9, epsilon_decay=100000, epsilon_end=0.05):
     self.capacity = 100000
-    self.batch_size = 1024
+    self.batch_size = 512
     self.num_users = NUM_USERS
     self.state_size = STATE_DIM * NUM_USERS
     self.env = env
@@ -35,7 +35,7 @@ class DDQN:
     self.tau = tau
     self.steps = 0
     self.episode_done = 0
-    self.episodes_before_train = 10
+    self.episodes_before_train = EPISODES_BEFORE_TRAIN
 
     self.policy_net = [DQN(self.state_size, self.action_size) for _ in range(self.num_users)]
     self.target_net = [DQN(self.state_size, self.action_size) for _ in range(self.num_users)]
@@ -96,6 +96,14 @@ class DDQN:
     self.optimizer[user].step()
 
 
+  def update_target(self, user):
+    target_net_state_dict = ddqn.target_net[user].state_dict()
+    policy_net_state_dict = ddqn.policy_net[user].state_dict()
+    for key in policy_net_state_dict:
+      target_net_state_dict[key] = policy_net_state_dict[key] * ddqn.tau + target_net_state_dict[key] * (1 - ddqn.tau)
+    ddqn.target_net[user].load_state_dict(target_net_state_dict)
+        
+
 if __name__ == "__main__":
   path = PATH + '/ddqn'
   path = '{}/{}'.format(path, datetime.now())
@@ -106,7 +114,9 @@ if __name__ == "__main__":
   ddqn = DDQN(env)
 
   reward_record = []
-  for i_episode in range(1, EPISODES+1):
+  target_net_state_dict = None
+  policy_net_state_dict = None
+  for i_episode in range(1, 2 * EPISODES+1):
     obs = env.get_state()
     # state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     obs = np.stack(obs)
@@ -141,11 +151,7 @@ if __name__ == "__main__":
 
       for user in range(ddqn.num_users):
         ddqn.optimize_model(user)
-        target_net_state_dict = ddqn.target_net[user].state_dict()
-        policy_net_state_dict = ddqn.policy_net[user].state_dict()
-        for key in policy_net_state_dict:
-          target_net_state_dict[key] = policy_net_state_dict[key] * ddqn.tau + target_net_state_dict[key] * (1 - ddqn.tau)
-        ddqn.target_net[user].load_state_dict(target_net_state_dict)
+        ddqn.update_target(user)
     
       if (t+1)%100 == 0:
         episode_stats = env.get_stats()
@@ -160,8 +166,9 @@ if __name__ == "__main__":
     print('Memory: {:7d}/{:7d}'.format(len(ddqn.memory), ddqn.capacity))
     reward_record.append(mean_reward)
 
-    if i_episode % 100 == 0 or i_episode == EPISODES:
-            save_model(path, ddqn, i_episode, reward_record)
+    if i_episode % 50 == 0:
+      save_model(path, ddqn, i_episode, reward_record)
+  save_model(path, ddqn, i_episode, reward_record)
 
 
       

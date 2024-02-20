@@ -57,11 +57,15 @@ class Environment:
 
     # randomly place users in grid
     self.user_coords = []
+    tmp_users = []
     for _ in range(self.N_users):
       # multiply and divide by 100 to have two decimal points
       user = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
               randint(-self.y_length/2*100, self.y_length/2*100)/100)
-      self.user_coords.append(user)
+      tmp_users.append(user)
+    self.user_coords = sorted(tmp_users, 
+                              key=lambda user: dist(user, self.bs_coords) / dist(user, self.eve_coords), 
+                              reverse=True)
 
     # calculate channel gains for each user with respect to BS and eve
     self._set_rayleigh(init=True)

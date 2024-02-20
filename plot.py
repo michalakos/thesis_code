@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 from time import sleep
-STEPS = 10
+STEPS = 5
 
 
-file_path = '/home/michalakos/Documents/Thesis/training_results/ddqn/2024-02-19 01:36:21.968252/ep_200/reward_record.txt'
+file_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-02-19 13:28:12.505954/ep_200/reward_record.txt'
 
 numbers = []
 with open(file_path, 'rb') as file:

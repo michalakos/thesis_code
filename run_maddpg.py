@@ -28,7 +28,7 @@ capacity = CAPACITY
 batch_size = BATCH_SIZE
 n_episode = EPISODES
 max_steps = TIMESLOTS
-episodes_before_train = 5
+episodes_before_train = EPISODES_BEFORE_TRAIN
 
 if load:
     maddpg = load_model(load_path)
@@ -106,5 +106,6 @@ else:
         if maddpg.episode_done == maddpg.episodes_before_train:
             print('Training now begins...')
 
-        if i_episode % 50 == 0 or i_episode == n_episode:
+        if i_episode % 50 == 0:
             save_model(path, maddpg, i_episode, reward_record)
+    save_model(path, maddpg, i_episode, reward_record)
