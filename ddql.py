@@ -116,7 +116,8 @@ if __name__ == "__main__":
   reward_record = []
   target_net_state_dict = None
   policy_net_state_dict = None
-  for i_episode in range(1, 2 * EPISODES+1):
+  for i_episode in range(1, EPISODES+1):
+    obs = env.reset()
     obs = env.get_state()
     # state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     obs = np.stack(obs)
@@ -160,10 +161,11 @@ if __name__ == "__main__":
             for user_stats in episode_stats:
                 print(user_stats, file=f)
             print('\n', file=f)
+        if (t+1)%10000 == 0:
+            print('{:6d}/{:6d}, epsilon = {}'.format(t+1, TIMESLOTS, ddqn.eps_threshold))
     mean_reward = total_reward / TIMESLOTS
     ddqn.episode_done += 1
     print('Episode: %d, mean reward = %f, epsilon = %f' % (i_episode, mean_reward, ddqn.eps_threshold))
-    print('Memory: {:7d}/{:7d}'.format(len(ddqn.memory), ddqn.capacity))
     reward_record.append(mean_reward)
 
     if i_episode % 50 == 0:

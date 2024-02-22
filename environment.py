@@ -185,11 +185,12 @@ class Environment:
     en_sum = self._energy_sum(action)
 
     mean_time = 0
+    total_time = 0
     for user in range(self.N_users):
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
-      mean_time += max(offload_time, execution_time)
-    mean_time /= self.N_users
+      total_time += max(offload_time, execution_time)
+    mean_time = total_time / self.N_users
 
     l1 = 1000
     l2 = 10
@@ -198,7 +199,10 @@ class Environment:
     c = 0.1
 
     qos = self._qos(action)
-    return -(1 - omega) * l1 * en_sum - omega * l2 * mean_time + l3 * np.exp(2 * qos) + c
+    # return -(1 - omega) * l1 * en_sum - omega * l2 * mean_time + l3 * np.exp(2 * qos) + c
+    w1 = 1000
+    w2 = 10
+    return - w1 * en_sum - w2 * total_time + qos + c
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)

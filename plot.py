@@ -3,7 +3,7 @@ from time import sleep
 STEPS = 5
 
 
-file_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-02-19 13:28:12.505954/ep_200/reward_record.txt'
+file_path = '/home/michalakos/Documents/Thesis/training_results/ddqn/2024-02-19 04:33:25.998825/ep_200/reward_record.txt'
 
 numbers = []
 with open(file_path, 'rb') as file:
@@ -21,4 +21,6 @@ for i in numbers:
     cum_sum = 0
 
 plt.plot(x)
+plt.xlabel('Timeslots')
+plt.title('Reward')
 plt.show()

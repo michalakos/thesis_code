@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import json
-STEPS = 20
+STEPS = 40
 
-file = '/home/michalakos/Documents/Thesis/training_results/ddqn/2024-02-20 11:38:36.019702/logs.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/ddqn/2024-02-22 10:27:13.336605/logs.txt'
 values_dict = {
   0: 'sec_rate_1', 
   1: 'sec_rate_2', 
@@ -22,13 +22,31 @@ values_dict = {
   15: 'reward',
   }
 
+titles = {
+  0: 'Secure Data Rate (1)', 
+  1: 'Secure Data Rate (2)', 
+  2: 'Secure Data Rate (Sum)', 
+  3: 'Offload Time', 
+  4: 'Execution Time', 
+  5: 'Max Time',
+  6: 'Power (1)', 
+  7: 'Power (2)', 
+  8: 'Power (Sum)', 
+  9: 'Split', 
+  10: 'Offload Energy', 
+  11: 'Execution Energy', 
+  12: 'Energy (Sum)', 
+  13: 'Channel Gain to Base Station', 
+  14: 'Channel Gain to Eavesdropper',
+  15: 'Reward',
+}
+
 # tag = 13
 num_users = 3
 cur_user = 0
 
 for tag in range(len(values_dict)):
   plotting_value = values_dict[tag]
-
   plot_values = [[] for _ in range(num_users)]
 
   lines = []
@@ -46,7 +64,6 @@ for tag in range(len(values_dict)):
       # this line denotes a new timestamp
         cur_user = 0
 
-  fig, axs = plt.subplots(2,2)
   for user in range(num_users):
     cum_sum = 0
     index = 0
@@ -57,10 +74,13 @@ for tag in range(len(values_dict)):
       if index % STEPS == 0:
         x.append(cum_sum/STEPS)
         cum_sum = 0
-    axs[user // 2][user % 2].plot(x)
-    axs[user // 2][user % 2].set_title("User {}".format(user))
-    fig.suptitle(values_dict[tag])
-    # plt.plot(x)
-    # plt.xlabel('Steps (x{})'.format(STEPS))
-    # plt.ylabel(values_dict[tag])
+    if values_dict[tag] == 'reward':
+      plt.plot(x, color='black')
+    else:
+      plt.plot(x, label='User {}'.format(user))
+    plt.title(titles[tag])
+    plt.xlabel('Timesteps (sampled every 100)')
+    plt.ylabel('Mean of {} timesteps'.format(STEPS))
+    if values_dict[tag] != 'reward':
+      plt.legend()
   plt.show()

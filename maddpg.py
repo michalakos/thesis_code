@@ -59,7 +59,7 @@ class MADDPG:
 
   def update_policy(self):
     # do not train until exploration is enough
-    if self.episode_done <= self.episodes_before_train:
+    if self.episode_done < self.episodes_before_train:
       return None, None
 
     ByteTensor = th.cuda.ByteTensor if self.use_cuda else th.ByteTensor
@@ -139,7 +139,7 @@ class MADDPG:
 
       act += th.from_numpy(np.random.randn(self.n_actions) * self.var[i]).type(FloatTensor)
 
-      if self.episode_done > self.episodes_before_train and self.var[i] > 0.1:
+      if self.episode_done >= self.episodes_before_train and self.var[i] > 0.1:
         self.var[i] *= DISCOUNT
       act = th.clamp(act, 0, 1.0)
 
