@@ -32,9 +32,9 @@ class Environment:
         "E_off": None,
         "E_exec": None,
         "E_tot": None,
+        "reward": None,
         "bs_gain": None,
         "eve_gain": None,
-        "reward": None,
       }
       self.stats.append(user_dict)
     
@@ -53,7 +53,7 @@ class Environment:
   def reset(self):
     self.task_sizes = []
     self.bs_coords = (0,0)
-    self.eve_coords = (100, 100)
+    self.eve_coords = (120, 120)
 
     # randomly place users in grid
     self.user_coords = []
@@ -63,9 +63,10 @@ class Environment:
       user = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
               randint(-self.y_length/2*100, self.y_length/2*100)/100)
       tmp_users.append(user)
+    # self.user_coords = tmp_users
     self.user_coords = sorted(tmp_users, 
-                              key=lambda user: dist(user, self.bs_coords) / dist(user, self.eve_coords), 
-                              reverse=True)
+                              key=lambda user: dist(user, self.bs_coords),
+                              reverse=False)
 
     # calculate channel gains for each user with respect to BS and eve
     self._set_rayleigh(init=True)
@@ -142,7 +143,7 @@ class Environment:
     self._set_rayleigh()
     user_gains_bs = self.get_gains_user_to_ref('bs')
     user_gains_eve = self.get_gains_user_to_ref('eve')
-    self.dec_order = sorted(range(self.N_users), key=lambda k: user_gains_bs[k]/user_gains_eve[k], reverse=True)
+    self.dec_order = sorted(range(self.N_users), key=lambda k: user_gains_bs[k], reverse=True)
     self.state = np.array(tuple(zip(user_gains_bs, user_gains_eve, self.task_sizes)))
 
     return self.state
@@ -189,20 +190,13 @@ class Environment:
     for user in range(self.N_users):
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
-      total_time += max(offload_time, execution_time)
-    mean_time = total_time / self.N_users
+      total_time +=  offload_time + execution_time
 
-    l1 = 1000
-    l2 = 10
-    l3 = 1
-    omega = 0.6
-    c = 0.1
-
+    omega = 0.5
     qos = self._qos(action)
-    # return -(1 - omega) * l1 * en_sum - omega * l2 * mean_time + l3 * np.exp(2 * qos) + c
     w1 = 1000
     w2 = 10
-    return - w1 * en_sum - w2 * total_time + qos + c
+    return - (1 - omega) * w1 * en_sum - omega * w2 * total_time + qos
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)

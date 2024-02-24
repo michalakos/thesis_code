@@ -5,8 +5,7 @@ from memory import ReplayMemory, Experience
 import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
-from constants import SCALE_REWARD, BETA, DISCOUNT
-# from random_process import OrnsteinUhlenbeckProcess
+from constants import SCALE_REWARD, BETA, EPISODES, TIMESLOTS
 
 def soft_update(target, source, t):
   for target_param, source_param in zip(target.parameters(), source.parameters()):
@@ -37,7 +36,7 @@ class MADDPG:
     self.episodes_before_train = episodes_before_train
 
     self.GAMMA = 0.95
-    self.tau = 0.01
+    self.tau = 0.005
 
     self.var = [1.0 for i in range(n_agents)]
     self.critic_optimizer = [Adam(x.parameters(), lr=0.001) for x in self.critics]
@@ -60,6 +59,9 @@ class MADDPG:
   def update_policy(self):
     # do not train until exploration is enough
     if self.episode_done < self.episodes_before_train:
+      if self.steps_done % (TIMESLOTS // 10) == 0:
+        del self.local_actors
+        self.local_actors = [Actor(self.n_states, self.n_actions) for _ in range(self.n_agents)]
       return None, None
 
     ByteTensor = th.cuda.ByteTensor if self.use_cuda else th.ByteTensor
@@ -137,18 +139,14 @@ class MADDPG:
       sb = state_batch[i, :].detach()
       act = self.local_actors[i](sb.unsqueeze(0)).squeeze()
 
-      act += th.from_numpy(np.random.randn(self.n_actions) * self.var[i]).type(FloatTensor)
-
-      if self.episode_done >= self.episodes_before_train and self.var[i] > 0.1:
-        self.var[i] *= DISCOUNT
+      if self.episode_done <= EPISODES // 2:
+        act += th.from_numpy(np.random.normal(0, 0.1, self.n_actions)).type(FloatTensor)
       act = th.clamp(act, 0, 1.0)
 
       if act[-1] < 0.1:
         offset_array = np.zeros(self.n_actions)
         offset_array[-1] = 0.1
         act += th.from_numpy(offset_array).type(FloatTensor)
-      # if act[-1] < 0.01:
-      #     act = th.from_numpy(np.zeros(self.n_actions)).type(FloatTensor)
 
       actions[i, :] = act
     self.steps_done += 1

@@ -100,10 +100,9 @@ else:
                     print('\n', file=f)
                 if (t+1)%10000 == 0:
                     print('{:6d}/{:6d}, epsilon = {}'.format(t+1, TIMESLOTS, maddpg.var[0]))
-                    print('Memory: {:7d}/{:7d}'.format(len(maddpg.memory), CAPACITY))
         
         maddpg.episode_done += 1
-        print('Episode: %d, mean reward = %f, epsilon = %f' % (i_episode, total_reward/max_steps, maddpg.var[0]))
+        print('Episode: {:3d}, mean reward = {:.3f}, epsilon = {}'.format(i_episode, total_reward/max_steps, maddpg.var[0]))
         reward_record.append(total_reward/max_steps)
 
         if maddpg.episode_done == maddpg.episodes_before_train:

@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import json
-STEPS = 40
+STEPS = 5
 
-file = '/home/michalakos/Documents/Thesis/training_results/ddqn/2024-02-22 10:27:13.336605/logs.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-02-24 14:17:41.916094/logs.txt'
 values_dict = {
   0: 'sec_rate_1', 
   1: 'sec_rate_2', 
@@ -17,9 +17,9 @@ values_dict = {
   10: 'E_off', 
   11: 'E_exec', 
   12: 'E_tot', 
-  13: 'bs_gain', 
-  14: 'eve_gain',
-  15: 'reward',
+  13: 'reward',
+  14: 'bs_gain', 
+  15: 'eve_gain',
   }
 
 titles = {
@@ -36,12 +36,11 @@ titles = {
   10: 'Offload Energy', 
   11: 'Execution Energy', 
   12: 'Energy (Sum)', 
-  13: 'Channel Gain to Base Station', 
-  14: 'Channel Gain to Eavesdropper',
-  15: 'Reward',
+  13: 'Reward',
+  14: 'Channel Gain to Base Station', 
+  15: 'Channel Gain to Eavesdropper',
 }
 
-# tag = 13
 num_users = 3
 cur_user = 0
 
