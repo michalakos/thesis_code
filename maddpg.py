@@ -5,7 +5,7 @@ from memory import ReplayMemory, Experience
 import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
-from constants import SCALE_REWARD, BETA, EPISODES, TIMESLOTS
+from constants import BETA, TIMESLOTS, GAMMA, TAU
 
 def soft_update(target, source, t):
   for target_param, source_param in zip(target.parameters(), source.parameters()):
@@ -35,9 +35,6 @@ class MADDPG:
     self.use_cuda = th.cuda.is_available()
     self.episodes_before_train = episodes_before_train
 
-    self.GAMMA = 0.95
-    self.tau = 0.005
-
     self.var = [1.0 for i in range(n_agents)]
     self.critic_optimizer = [Adam(x.parameters(), lr=0.001) for x in self.critics]
     self.actor_optimizer = [Adam(x.parameters(), lr=0.0001) for x in self.actors]
@@ -62,7 +59,8 @@ class MADDPG:
       if self.steps_done % (TIMESLOTS // 10) == 0:
         del self.local_actors
         self.local_actors = [Actor(self.n_states, self.n_actions) for _ in range(self.n_agents)]
-      return None, None
+      return ([th.from_numpy(np.array(0)) for _ in range(self.n_agents)], 
+              [th.from_numpy(np.array(0)) for _ in range(self.n_agents)])
 
     ByteTensor = th.cuda.ByteTensor if self.use_cuda else th.ByteTensor
     FloatTensor = th.cuda.FloatTensor if self.use_cuda else th.FloatTensor
@@ -101,8 +99,7 @@ class MADDPG:
       ).squeeze()
       # scale_reward: to scale reward in Q functions
       target_Q = target_Q.unsqueeze(1)
-
-      target_Q = th.add(target_Q * self.GAMMA, reward_batch * SCALE_REWARD)
+      target_Q = th.add(target_Q * GAMMA, reward_batch)
 
       loss_Q = nn.MSELoss()(current_Q, target_Q.detach())
       loss_Q.backward()
@@ -122,8 +119,8 @@ class MADDPG:
       a_loss.append(actor_loss)
 
     for i in range(self.n_agents):
-      soft_update(self.critics_target[i], self.critics[i], self.tau)
-      soft_update(self.actors_target[i], self.actors[i], self.tau)
+      soft_update(self.critics_target[i], self.critics[i], TAU)
+      soft_update(self.actors_target[i], self.actors[i], TAU)
 
     if self.steps_done % BETA == 0 and self.steps_done > 0:
       for i in range(self.n_agents):
@@ -139,8 +136,8 @@ class MADDPG:
       sb = state_batch[i, :].detach()
       act = self.local_actors[i](sb.unsqueeze(0)).squeeze()
 
-      if self.episode_done <= EPISODES // 2:
-        act += th.from_numpy(np.random.normal(0, 0.1, self.n_actions)).type(FloatTensor)
+      noise = np.random.normal(0, 0.1, self.n_actions)
+      act += th.from_numpy(noise).type(FloatTensor)
       act = th.clamp(act, 0, 1.0)
 
       if act[-1] < 0.1:

@@ -95,8 +95,11 @@ else:
                 episode_stats = env.get_stats()
                 with open(path+'/logs.txt', 'a') as f:
                     print('{}/{}\t{}/{}'.format(t+1, max_steps, i_episode, n_episode), file=f)
-                    for user_stats in episode_stats:
-                        print(user_stats, file=f)
+                    for i, user_stats in enumerate(episode_stats):
+                        tmp_stats = user_stats.copy()
+                        tmp_stats['a_loss'] = int(a_loss[i].data.numpy())
+                        tmp_stats['c_loss'] = int(c_loss[i].data.numpy())
+                        print(tmp_stats, file=f, )
                     print('\n', file=f)
                 if (t+1)%10000 == 0:
                     print('{:6d}/{:6d}, epsilon = {}'.format(t+1, TIMESLOTS, maddpg.var[0]))
@@ -108,6 +111,6 @@ else:
         if maddpg.episode_done == maddpg.episodes_before_train:
             print('Training now begins...')
 
-        if i_episode % 50 == 0:
+        if i_episode % 500 == 0:
             save_model(path, maddpg, i_episode, reward_record)
     save_model(path, maddpg, i_episode, reward_record)

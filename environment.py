@@ -53,7 +53,7 @@ class Environment:
   def reset(self):
     self.task_sizes = []
     self.bs_coords = (0,0)
-    self.eve_coords = (120, 120)
+    self.eve_coords = (100, 100)
 
     # randomly place users in grid
     self.user_coords = []
@@ -66,7 +66,7 @@ class Environment:
     # self.user_coords = tmp_users
     self.user_coords = sorted(tmp_users, 
                               key=lambda user: dist(user, self.bs_coords),
-                              reverse=False)
+                              reverse=True)
 
     # calculate channel gains for each user with respect to BS and eve
     self._set_rayleigh(init=True)
@@ -170,11 +170,19 @@ class Environment:
     for user in range(self.N_users):
       self.stats[user]['reward'] = reward
     self.state = self._state_update()
+    state = self.get_state()
 
-    return self.state, reward
+    return state, reward
   
 
+  # FIXME: variable scaling based on expected results
   def get_state(self):
+    user_gains_bs = self.get_gains_user_to_ref('bs')
+    user_gains_bs = [x * 10**7 for x in user_gains_bs]
+    user_gains_eve = self.get_gains_user_to_ref('eve')
+    user_gains_eve = [x * 10**10 for x in user_gains_eve]
+    task_sizes = [x / 10**6 for x in self.task_sizes]
+    self.state = np.array(tuple(zip(user_gains_bs, user_gains_eve, task_sizes)))
     return np.array(self.state)
 
 
