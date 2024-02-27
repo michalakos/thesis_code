@@ -65,7 +65,7 @@ if evaluate:
 else:
     starting_episode = maddpg.episode_done + 1
     for i_episode in range(starting_episode, n_episode + 1):
-        obs = env.reset()
+        # obs = env.reset()
         obs = env.get_state()
         obs = np.stack(obs)
         if isinstance(obs, np.ndarray):
@@ -102,10 +102,10 @@ else:
                         print(tmp_stats, file=f, )
                     print('\n', file=f)
                 if (t+1)%10000 == 0:
-                    print('{:6d}/{:6d}, epsilon = {}'.format(t+1, TIMESLOTS, maddpg.var[0]))
+                    print('{:6d}/{:6d}'.format(t+1, TIMESLOTS))
         
         maddpg.episode_done += 1
-        print('Episode: {:3d}, mean reward = {:.3f}, epsilon = {}'.format(i_episode, total_reward/max_steps, maddpg.var[0]))
+        print('Episode: {:3d}, mean reward = {:.3f}'.format(i_episode, total_reward/max_steps))
         reward_record.append(total_reward/max_steps)
 
         if maddpg.episode_done == maddpg.episodes_before_train:
