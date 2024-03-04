@@ -229,9 +229,9 @@ class Environment:
       self.stats[user]['off_time'] = offload_time
       self.stats[user]['exec_time'] = execution_time
       self.stats[user]['max_time'] = max(offload_time, execution_time)
-      self.stats[user]['p1'] = p1
-      self.stats[user]['p2'] = p2
-      self.stats[user]['P_tot'] = (p1 + p2) * P_MAX / 2
+      self.stats[user]['p1'] = p1 * P_MAX
+      self.stats[user]['p2'] = p2 * (1 - p1) * P_MAX
+      self.stats[user]['P_tot'] = (p1 + p2 * (1 - p1)) * P_MAX
       self.stats[user]['split'] = split
       self.stats[user]['bs_gain'] = user_gains_bs[user]
       self.stats[user]['eve_gain'] = user_gains_eve[user]
@@ -292,7 +292,7 @@ class Environment:
   def _energy_offload_k(self, k, action):
     offload_time = self._offload_time_k(k, action)
     user_p_1, user_p_2, _ = self.get_action_k(k, action)
-    user_p_tot = self._dbm_to_watts(P_MAX/2) * (user_p_1 + user_p_2)
+    user_p_tot = self._dbm_to_watts(P_MAX) * (user_p_1 + user_p_2 * (1 - user_p_1))
     
     return user_p_tot * offload_time if offload_time <= T_MAX else user_p_tot * T_MAX
   
@@ -306,8 +306,8 @@ class Environment:
     p1_r, p2_r, _ = self.get_action_k(k, action)
     channel_bs, channel_eve, _ = self.get_state_k(k)
 
-    user_p1 = self._dbm_to_watts(P_MAX/2) * p1_r
-    user_p2 = self._dbm_to_watts(P_MAX/2) * p2_r
+    user_p1 = self._dbm_to_watts(P_MAX) * p1_r
+    user_p2 = self._dbm_to_watts(P_MAX) * p2_r * (1 - p1_r)
     noise = self._dbm_to_watts(NOISE_STD)
 
     # calculate first message's achievable rate of decoding at BS
@@ -349,8 +349,8 @@ class Environment:
 
     for user in decoding_order[k+1:]:
       p1_r, p2_r, _ = self.get_action_k(user, action)
-      user_p1 = self._dbm_to_watts(P_MAX/2) * p1_r
-      user_p2 = self._dbm_to_watts(P_MAX/2) * p2_r
+      user_p1 = self._dbm_to_watts(P_MAX) * p1_r
+      user_p2 = self._dbm_to_watts(P_MAX) * p2_r * (1 - p1_r)
       channel_bs, _, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_bs
 
@@ -364,8 +364,8 @@ class Environment:
       if user == k:
         continue
       p_1, p_2, _ = self.get_action_k(user, action)
-      user_p1 = self._dbm_to_watts(P_MAX/2) * p_1
-      user_p2 = self._dbm_to_watts(P_MAX/2) * p_2
+      user_p1 = self._dbm_to_watts(P_MAX) * p_1
+      user_p2 = self._dbm_to_watts(P_MAX) * p_2 * (1 - p_1)
       _, channel_eve, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_eve
       
