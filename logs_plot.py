@@ -61,7 +61,7 @@ for tag in range(len(values_dict)):
       # this line contains a log, there are #num_users logs for each timestamp
       # and 2 timestamps for each epoch
         log = json.loads(line)
-        plot_values[int(cur_user)].append(log[plotting_value])
+        plot_values[cur_user].append(log[plotting_value])
         cur_user += 1
       else:
       # this line denotes a new timestamp
