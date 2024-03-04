@@ -193,18 +193,18 @@ class Environment:
   def _reward(self, action):
     en_sum = self._energy_sum(action)
 
-    total_time = 0
+    max_time = 0
     for user in range(self.N_users):
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
-      total_time +=  offload_time + execution_time
+      max_time =  max(offload_time, execution_time)
 
-    omega = 0.7
+    omega = 0.6
     qos = self._qos(action)
     w1 = 1000
     w2 = 10
     penalty = -20
-    cost = (1 - omega) * w1 * en_sum - omega * w2 * total_time
+    cost = (1 - omega) * w1 * en_sum - omega * w2 * max_time
     return qos * penalty - (1 - qos) * cost
 
 
