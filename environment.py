@@ -53,7 +53,7 @@ class Environment:
   def reset(self):
     self.task_sizes = []
     self.bs_coords = (0,0)
-    self.eve_coords = (100, 100)
+    self.eve_coords = (150, 150)
 
     # randomly place users in grid
     self.user_coords = []
@@ -63,10 +63,10 @@ class Environment:
       user = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
               randint(-self.y_length/2*100, self.y_length/2*100)/100)
       tmp_users.append(user)
-    # self.user_coords = tmp_users
-    self.user_coords = sorted(tmp_users, 
-                              key=lambda user: dist(user, self.bs_coords),
-                              reverse=True)
+    self.user_coords = tmp_users
+    # self.user_coords = sorted(tmp_users, 
+    #                           key=lambda user: dist(user, self.bs_coords),
+    #                           reverse=True)
 
     # calculate channel gains for each user with respect to BS and eve
     self._set_rayleigh(init=True)
@@ -193,18 +193,17 @@ class Environment:
   def _reward(self, action):
     en_sum = self._energy_sum(action)
 
-    mean_time = 0
     total_time = 0
     for user in range(self.N_users):
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
       total_time +=  offload_time + execution_time
 
-    omega = 0.5
+    omega = 0.7
     qos = self._qos(action)
     w1 = 1000
     w2 = 10
-    return - (1 - omega) * w1 * en_sum - omega * w2 * total_time + qos
+    return - (1 - omega) * w1 * en_sum - omega * w2 * total_time + 0.01 * qos
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
@@ -219,7 +218,7 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
 
       p1, p2, split = self.get_action_k(user, action)
-      if max(offload_time, execution_time) <= 2 * T_MAX:
+      if max(offload_time, execution_time) < 4 * T_MAX:
         res += 1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
@@ -261,11 +260,11 @@ class Environment:
     sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(k, action)
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
-      offload_time = min(user_split * task_total / (C * sec_data_rate_k), 4 * T_MAX)
+      offload_time = min(user_split * task_total / (C * sec_data_rate_k), 10 * T_MAX)
     elif user_split == 0:
       offload_time = 0
     else:
-      offload_time = 4 * T_MAX
+      offload_time = 10 * T_MAX
 
     return offload_time
 

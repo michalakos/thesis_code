@@ -65,7 +65,7 @@ if evaluate:
 else:
     starting_episode = maddpg.episode_done + 1
     for i_episode in range(starting_episode, n_episode + 1):
-        # obs = env.reset()
+        obs = env.reset()
         obs = env.get_state()
         obs = np.stack(obs)
         if isinstance(obs, np.ndarray):
@@ -113,4 +113,5 @@ else:
 
         if i_episode % 500 == 0:
             save_model(path, maddpg, i_episode, reward_record)
-    save_model(path, maddpg, i_episode, reward_record)
+    if i_episode % 500 != 0:
+        save_model(path, maddpg, i_episode, reward_record)

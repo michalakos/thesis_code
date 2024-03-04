@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import json
 STEPS = 5
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-02-27 17:29:56.753289/logs.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-02-28 23:16:11.904011/logs.txt'
 values_dict = {
   0: 'sec_rate_1', 
   1: 'sec_rate_2', 
