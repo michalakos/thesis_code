@@ -139,7 +139,7 @@ class Environment:
   # get new tasks
   # return new state
   def _state_update(self):
-    self.task_sizes = [int(np.random.normal(DATA_ARRIVAL_RATE*T_MAX, DATA_ARRIVAL_RATE*T_MAX*0.05)) for _ in range(self.N_users)]
+    self.task_sizes = [int(np.random.uniform(DATA_SIZE, DATA_SIZE * 1.5)) for _ in range(self.N_users)]
     self._set_rayleigh()
     user_gains_bs = self.get_gains_user_to_ref('bs')
     user_gains_eve = self.get_gains_user_to_ref('eve')
@@ -203,7 +203,9 @@ class Environment:
     qos = self._qos(action)
     w1 = 1000
     w2 = 10
-    return - (1 - omega) * w1 * en_sum - omega * w2 * total_time + 0.01 * qos
+    penalty = -20
+    cost = (1 - omega) * w1 * en_sum - omega * w2 * total_time
+    return qos * penalty - (1 - qos) * cost
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
@@ -218,7 +220,7 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
 
       p1, p2, split = self.get_action_k(user, action)
-      if max(offload_time, execution_time) < 4 * T_MAX:
+      if max(offload_time, execution_time) > T_MAX or (split == 0 and p1 + p2 > 0):
         res += 1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1

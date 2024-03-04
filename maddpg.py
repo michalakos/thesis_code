@@ -36,8 +36,8 @@ class MADDPG:
     self.episodes_before_train = episodes_before_train
 
     self.var = [1.0 for i in range(n_agents)]
-    self.critic_optimizer = [Adam(x.parameters(), lr=0.001) for x in self.critics]
-    self.actor_optimizer = [Adam(x.parameters(), lr=0.0001) for x in self.actors]
+    self.critic_optimizer = [Adam(x.parameters(), lr=5e-4) for x in self.critics]
+    self.actor_optimizer = [Adam(x.parameters(), lr=1e-4) for x in self.actors]
 
     if self.use_cuda:
       for x in self.actors:
@@ -140,10 +140,10 @@ class MADDPG:
       act += th.from_numpy(noise).type(FloatTensor)
       act = th.clamp(act, 0, 1.0)
 
-      if act[-1] < 0.1:
-        offset_array = np.zeros(self.n_actions)
-        offset_array[-1] = 0.1
-        act += th.from_numpy(offset_array).type(FloatTensor)
+      # if act[-1] < 0.1:
+      #   offset_array = np.zeros(self.n_actions)
+      #   offset_array[-1] = 0.1
+      #   act += th.from_numpy(offset_array).type(FloatTensor)
 
       actions[i, :] = act
     self.steps_done += 1
