@@ -53,7 +53,7 @@ class Environment:
   def reset(self):
     self.task_sizes = []
     self.bs_coords = (0,0)
-    self.eve_coords = (150, 150)
+    self.eve_coords = (X_EVE, Y_EVE)
 
     # randomly place users in grid
     self.user_coords = []
@@ -202,9 +202,9 @@ class Environment:
     omega = 0.6
     qos = self._qos(action)
     w1 = 1000
-    w2 = 10
-    penalty = -20
-    cost = (1 - omega) * w1 * en_sum - omega * w2 * max_time
+    w2 = 100
+    penalty = -30
+    cost = (1 - omega) * w1 * en_sum + omega * w2 * max_time
     return qos * penalty - (1 - qos) * cost
 
 
@@ -220,7 +220,7 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
 
       p1, p2, split = self.get_action_k(user, action)
-      if max(offload_time, execution_time) > T_MAX or (split == 0 and p1 + p2 > 0):
+      if split == 0 and p1 + p2 > 0 or max(offload_time, execution_time) > 3 * T_MAX:
         res += 1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
@@ -229,9 +229,9 @@ class Environment:
       self.stats[user]['off_time'] = offload_time
       self.stats[user]['exec_time'] = execution_time
       self.stats[user]['max_time'] = max(offload_time, execution_time)
-      self.stats[user]['p1'] = p1 * P_MAX
-      self.stats[user]['p2'] = p2 * (1 - p1) * P_MAX
-      self.stats[user]['P_tot'] = (p1 + p2 * (1 - p1)) * P_MAX
+      self.stats[user]['p1'] = p1 * self._dbm_to_watts(P_MAX)
+      self.stats[user]['p2'] = p2 * (1 - p1) * self._dbm_to_watts(P_MAX)
+      self.stats[user]['P_tot'] = (p1 + p2 * (1 - p1)) * self._dbm_to_watts(P_MAX)
       self.stats[user]['split'] = split
       self.stats[user]['bs_gain'] = user_gains_bs[user]
       self.stats[user]['eve_gain'] = user_gains_eve[user]
@@ -262,11 +262,11 @@ class Environment:
     sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(k, action)
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
-      offload_time = min(user_split * task_total / (C * sec_data_rate_k), 10 * T_MAX)
+      offload_time = min(user_split * task_total / (C * sec_data_rate_k), 3 * T_MAX)
     elif user_split == 0:
       offload_time = 0
     else:
-      offload_time = 10 * T_MAX
+      offload_time = 3 * T_MAX
 
     return offload_time
 
@@ -294,7 +294,7 @@ class Environment:
     user_p_1, user_p_2, _ = self.get_action_k(k, action)
     user_p_tot = self._dbm_to_watts(P_MAX) * (user_p_1 + user_p_2 * (1 - user_p_1))
     
-    return user_p_tot * offload_time if offload_time <= T_MAX else user_p_tot * T_MAX
+    return user_p_tot * offload_time if offload_time <= 3 * T_MAX else user_p_tot * 3 * T_MAX
   
 
   def _dbm_to_watts(self, y_dbm):

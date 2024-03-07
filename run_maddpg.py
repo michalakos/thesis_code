@@ -99,13 +99,15 @@ else:
                         tmp_stats = user_stats.copy()
                         tmp_stats['a_loss'] = int(a_loss[i].data.numpy())
                         tmp_stats['c_loss'] = int(c_loss[i].data.numpy())
-                        print(tmp_stats, file=f, )
+                        print(tmp_stats, file=f)
                     print('\n', file=f)
                 if (t+1)%10000 == 0:
                     print('{:6d}/{:6d}'.format(t+1, TIMESLOTS))
         
         maddpg.episode_done += 1
-        print('Episode: {:3d}, mean reward = {:.3f}'.format(i_episode, total_reward/max_steps))
+        # maddpg.std = max(maddpg.std * NOISE_DECAY, 0.05)
+        maddpg.std = 0.1
+        print('Episode: {:3d}, mean reward = {:.3f}, std: {:.3f}'.format(i_episode, total_reward/max_steps, maddpg.std))
         reward_record.append(total_reward/max_steps)
 
         if maddpg.episode_done == maddpg.episodes_before_train:

@@ -5,7 +5,7 @@ from memory import ReplayMemory, Experience
 import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
-from constants import BETA, TIMESLOTS, GAMMA, TAU
+from constants import BETA, TIMESLOTS, GAMMA, TAU, EPISODES
 
 def soft_update(target, source, t):
   for target_param, source_param in zip(target.parameters(), source.parameters()):
@@ -36,6 +36,7 @@ class MADDPG:
     self.episodes_before_train = episodes_before_train
 
     self.var = [1.0 for i in range(n_agents)]
+    self.std = 1
     self.critic_optimizer = [Adam(x.parameters(), lr=5e-4) for x in self.critics]
     self.actor_optimizer = [Adam(x.parameters(), lr=1e-4) for x in self.actors]
 
@@ -136,7 +137,7 @@ class MADDPG:
       sb = state_batch[i, :].detach()
       act = self.local_actors[i](sb.unsqueeze(0)).squeeze()
 
-      noise = np.random.normal(0, 0.1, self.n_actions)
+      noise = np.random.normal(0, self.std, self.n_actions)
       act += th.from_numpy(noise).type(FloatTensor)
       act = th.clamp(act, 0, 1.0)
 
