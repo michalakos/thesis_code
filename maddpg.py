@@ -5,7 +5,7 @@ from memory import ReplayMemory, Experience
 import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
-from constants import BETA, TIMESLOTS, GAMMA, TAU, EPISODES
+from constants import BETA, TIMESLOTS, GAMMA, TAU
 
 def soft_update(target, source, t):
   for target_param, source_param in zip(target.parameters(), source.parameters()):

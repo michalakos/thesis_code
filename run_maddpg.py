@@ -105,8 +105,8 @@ else:
                     print('{:6d}/{:6d}'.format(t+1, TIMESLOTS))
         
         maddpg.episode_done += 1
-        # maddpg.std = max(maddpg.std * NOISE_DECAY, 0.05)
-        maddpg.std = 0.1
+        maddpg.std = max(maddpg.std * NOISE_DECAY, 0.05)
+        # maddpg.std = 0.1
         print('Episode: {:3d}, mean reward = {:.3f}, std: {:.3f}'.format(i_episode, total_reward/max_steps, maddpg.std))
         reward_record.append(total_reward/max_steps)
 

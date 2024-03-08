@@ -199,10 +199,10 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
       max_time =  max(offload_time, execution_time)
 
-    omega = 0.6
+    omega = 0.2
     qos = self._qos(action)
     w1 = 1000
-    w2 = 100
+    w2 = 1
     penalty = -30
     cost = (1 - omega) * w1 * en_sum + omega * w2 * max_time
     return qos * penalty - (1 - qos) * cost
@@ -220,7 +220,7 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
 
       p1, p2, split = self.get_action_k(user, action)
-      if split == 0 and p1 + p2 > 0 or max(offload_time, execution_time) > 3 * T_MAX:
+      if split == 0 and p1 + p2 > 0 or max(offload_time, execution_time) >= 3 * T_MAX:
         res += 1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
@@ -263,6 +263,7 @@ class Environment:
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
       offload_time = min(user_split * task_total / (C * sec_data_rate_k), 3 * T_MAX)
+      offload_time = max(offload_time, T_MAX / 5)
     elif user_split == 0:
       offload_time = 0
     else:

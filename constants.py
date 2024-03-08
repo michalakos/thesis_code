@@ -4,15 +4,15 @@ import numpy as np
 NUM_USERS = 3         # (edge users)
 X_LENGTH = 100        # m (horizontal length of area)
 Y_LENGTH = 100        # m (vertical length of area)
-X_EVE = Y_EVE = 200
+X_EVE = Y_EVE = 150
 
 DOPPLER_FREQ = 10
 NOISE_STD = -174      # dBm/Hz (AWGN)
 FADE_STD = 8          # dB (path loss)
-B = 2e8           # Hz (bandwidth)
+B = 2e7           # Hz (bandwidth)
 P_MAX = 24            # dBm (max power)
 C = 50                # cpu cycles / bit (computational power)
-C_COEFF = 10**(-22)   # effective capacitance coefficient
+C_COEFF = 10**(-28)   # effective capacitance coefficient
 FREQUENCY = 4e5  # cpu cycles / sec (cpu frequency)
 # SEC_RATE_TH = 10000       # bit / sec (secure data rate threshold)
 T_MAX = 0.1           # sec (time threshold)
