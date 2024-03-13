@@ -53,7 +53,8 @@ class Environment:
   def reset(self):
     self.task_sizes = []
     self.bs_coords = (0,0)
-    self.eve_coords = (X_EVE, Y_EVE)
+    self.eve_coords = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
+                       randint(-self.y_length/2*100, self.y_length/2*100)/100)
 
     # randomly place users in grid
     self.user_coords = []
@@ -199,13 +200,13 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
       max_time =  max(offload_time, execution_time)
 
-    omega = 0.2
+    omega = 0.5
     qos = self._qos(action)
     w1 = 1000
-    w2 = 1
-    penalty = -30
+    w2 = 10
+    penalty = -10
     cost = (1 - omega) * w1 * en_sum + omega * w2 * max_time
-    return qos * penalty - (1 - qos) * cost
+    return (qos * penalty - cost) / 10
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
@@ -220,7 +221,7 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
 
       p1, p2, split = self.get_action_k(user, action)
-      if split == 0 and p1 + p2 > 0 or max(offload_time, execution_time) >= 3 * T_MAX:
+      if split == 0 and p1 + p2 > 0 or max(offload_time, execution_time) >= T_MAX:
         res += 1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
@@ -262,12 +263,12 @@ class Environment:
     sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(k, action)
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
-      offload_time = min(user_split * task_total / (C * sec_data_rate_k), 3 * T_MAX)
-      offload_time = max(offload_time, T_MAX / 5)
+      offload_time = min(user_split * task_total / (C * sec_data_rate_k), T_MAX)
+      offload_time = max(offload_time, T_MAX / 10)
     elif user_split == 0:
       offload_time = 0
     else:
-      offload_time = 3 * T_MAX
+      offload_time = T_MAX
 
     return offload_time
 
@@ -295,7 +296,7 @@ class Environment:
     user_p_1, user_p_2, _ = self.get_action_k(k, action)
     user_p_tot = self._dbm_to_watts(P_MAX) * (user_p_1 + user_p_2 * (1 - user_p_1))
     
-    return user_p_tot * offload_time if offload_time <= 3 * T_MAX else user_p_tot * 3 * T_MAX
+    return user_p_tot * offload_time if offload_time <= T_MAX else user_p_tot * T_MAX
   
 
   def _dbm_to_watts(self, y_dbm):
@@ -348,13 +349,13 @@ class Environment:
     decoding_order = self.dec_order
     interference = 0
 
-    for user in decoding_order[k+1:]:
+    k_dec_order = decoding_order.index(k)
+    for user in decoding_order[k_dec_order + 1:]:
       p1_r, p2_r, _ = self.get_action_k(user, action)
       user_p1 = self._dbm_to_watts(P_MAX) * p1_r
       user_p2 = self._dbm_to_watts(P_MAX) * p2_r * (1 - p1_r)
       channel_bs, _, _ = self.get_state_k(user)
       interference += (user_p1 + user_p2) * channel_bs
-
     return interference
 
 
