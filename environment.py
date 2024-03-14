@@ -1,4 +1,4 @@
-from random import randint
+from random import randint, choice
 from math import dist, log
 import numpy as np
 import matplotlib.pyplot as plt
@@ -59,10 +59,13 @@ class Environment:
     # randomly place users in grid
     self.user_coords = []
     tmp_users = []
-    for _ in range(self.N_users):
+    sign = [-1, 1]
+    for i in range(self.N_users):
       # multiply and divide by 100 to have two decimal points
-      user = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
-              randint(-self.y_length/2*100, self.y_length/2*100)/100)
+      user = (randint(int(i * self.x_length/2/self.N_users*100), int((i+1) * self.x_length/2/self.N_users*100))/100 * choice(sign),
+              randint(int(i * self.y_length/2/self.N_users*100), int((i+1) * self.y_length/2/self.N_users*100))/100 * choice(sign))
+      # user = (randint(-self.x_length/2*100, self.x_length/2*100)/100 * i / self.N_users,
+      #         randint(-self.y_length/2*100, self.y_length/2*100)/100 * i / self.N_users)
       tmp_users.append(user)
     self.user_coords = tmp_users
     # self.user_coords = sorted(tmp_users, 
@@ -192,21 +195,21 @@ class Environment:
   # QoS ranges from 0 (no requirements met)
   # to 1 (all requirement met)
   def _reward(self, action):
-    en_sum = self._energy_sum(action)
+    en_sum = self._energy_sum(action) / self.N_users
 
     max_time = 0
     for user in range(self.N_users):
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
-      max_time =  max(offload_time, execution_time)
+      max_time += max(offload_time, execution_time)
+    max_time /= self.N_users
 
-    omega = 0.5
     qos = self._qos(action)
-    w1 = 1000
-    w2 = 10
+    w1 = 100
+    w2 = 0
     penalty = -10
-    cost = (1 - omega) * w1 * en_sum + omega * w2 * max_time
-    return (qos * penalty - cost) / 10
+    cost = w1 * en_sum + w2 * max_time
+    return qos * penalty - cost
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
@@ -221,8 +224,11 @@ class Environment:
       execution_time = self._execution_time_k(user, action)
 
       p1, p2, split = self.get_action_k(user, action)
-      if split == 0 and p1 + p2 > 0 or max(offload_time, execution_time) >= T_MAX:
+      max_time = max(offload_time, execution_time)
+      if split > 0.1 and p1 + p2 < 0.05:
         res += 1
+      if max_time >= T_MAX:
+        res += min(max_time - T_MAX, T_MAX) * 10 + 0.1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
       self.stats[user]['sec_rate_2'] = sec_data_rate_k_2
@@ -264,7 +270,7 @@ class Environment:
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
       offload_time = min(user_split * task_total / (C * sec_data_rate_k), T_MAX)
-      offload_time = max(offload_time, T_MAX / 10)
+      # offload_time = max(offload_time, T_MAX / 5)
     elif user_split == 0:
       offload_time = 0
     else:

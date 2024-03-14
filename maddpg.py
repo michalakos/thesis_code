@@ -5,7 +5,7 @@ from memory import ReplayMemory, Experience
 import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
-from constants import BETA, TIMESLOTS, GAMMA, TAU
+from constants import BETA, TIMESLOTS, GAMMA, TAU, SCALE_REWARD
 
 def soft_update(target, source, t):
   for target_param, source_param in zip(target.parameters(), source.parameters()):
@@ -37,8 +37,8 @@ class MADDPG:
 
     self.var = [1.0 for i in range(n_agents)]
     self.std = 0.1
-    self.critic_optimizer = [Adam(x.parameters(), lr=5e-4) for x in self.critics]
-    self.actor_optimizer = [Adam(x.parameters(), lr=1e-4) for x in self.actors]
+    self.critic_optimizer = [Adam(x.parameters(), lr=1e-5) for x in self.critics]
+    self.actor_optimizer = [Adam(x.parameters(), lr=1e-6) for x in self.actors]
 
     if self.use_cuda:
       for x in self.actors:
@@ -100,7 +100,7 @@ class MADDPG:
       ).squeeze()
       # scale_reward: to scale reward in Q functions
       target_Q = target_Q.unsqueeze(1)
-      target_Q = th.add(target_Q * GAMMA, reward_batch)
+      target_Q = th.add(target_Q * GAMMA, reward_batch * SCALE_REWARD)
 
       loss_Q = nn.MSELoss()(current_Q, target_Q.detach())
       loss_Q.backward()

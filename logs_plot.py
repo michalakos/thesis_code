@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import json
-STEPS = 50
+STEPS = 20
+num_users = 4
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-03-13 21:08:20.880767/logs.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-03-14 19:51:10.343550/logs.txt'
 values_dict = {
   0: 'sec_rate_1', 
   1: 'sec_rate_2', 
@@ -45,9 +46,8 @@ titles = {
   # 17: 'Channel Gain to Eavesdropper',
 }
 
-num_users = 3
-cur_user = 0
 
+cur_user = 0
 for tag in range(len(values_dict)):
   plotting_value = values_dict[tag]
   plot_values = [[] for _ in range(num_users)]
