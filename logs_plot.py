@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 import json
 STEPS = 20
-num_users = 4
+num_users = 3
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-03-14 19:51:10.343550/logs.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-03-19 17:14:04.259912/logs.txt'
+
 values_dict = {
   0: 'sec_rate_1', 
   1: 'sec_rate_2', 

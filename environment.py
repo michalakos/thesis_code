@@ -53,21 +53,24 @@ class Environment:
   def reset(self):
     self.task_sizes = []
     self.bs_coords = (0,0)
-    self.eve_coords = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
-                       randint(-self.y_length/2*100, self.y_length/2*100)/100)
+    self.eve_coords = (-X_EVE, -Y_EVE)
+    # self.eve_coords = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
+    #                    randint(-self.y_length/2*100, self.y_length/2*100)/100)
 
     # randomly place users in grid
     self.user_coords = []
-    tmp_users = []
+    # tmp_users = []
     sign = [-1, 1]
     for i in range(self.N_users):
+      user = (int(self.x_length/2 / self.N_users * (i+1) * 100) / 100, int(self.y_length/2 / self.N_users * (i+1) * 100) / 100)
       # multiply and divide by 100 to have two decimal points
-      user = (randint(int(i * self.x_length/2/self.N_users*100), int((i+1) * self.x_length/2/self.N_users*100))/100 * choice(sign),
-              randint(int(i * self.y_length/2/self.N_users*100), int((i+1) * self.y_length/2/self.N_users*100))/100 * choice(sign))
+      # user = (randint(int(i * self.x_length/2/self.N_users*100), int((i+1) * self.x_length/2/self.N_users*100))/100,
+      #         randint(int(i * self.y_length/2/self.N_users*100), int((i+1) * self.y_length/2/self.N_users*100))/100)
       # user = (randint(-self.x_length/2*100, self.x_length/2*100)/100 * i / self.N_users,
       #         randint(-self.y_length/2*100, self.y_length/2*100)/100 * i / self.N_users)
-      tmp_users.append(user)
-    self.user_coords = tmp_users
+      self.user_coords.append(user)
+    # self.user_coords = tmp_users
+    # print(self.user_coords)
     # self.user_coords = sorted(tmp_users, 
     #                           key=lambda user: dist(user, self.bs_coords),
     #                           reverse=True)
@@ -75,6 +78,7 @@ class Environment:
     # calculate channel gains for each user with respect to BS and eve
     self._set_rayleigh(init=True)
     self.block_fade_bs = self._set_block_fade(self.bs_coords)
+    # print(self.block_fade_bs)
     self.block_fade_eve = self._set_block_fade(self.eve_coords)
 
     # randomize state of environment
@@ -99,16 +103,16 @@ class Environment:
         for _ in range(self.N_users)]
     else:
       # FIXME: Ts same across the board
-      rho = j0(2 * np.pi * DOPPLER_FREQ * 0.02)
+      rho = j0(2 * np.pi * DOPPLER_FREQ * T_MAX)
       self.rayleigh_bs = [rho * x + 
                           complex(
-                            np.random.normal((1-rho**2)/2), 
-                            np.random.normal((1-rho**2)/2)) 
+                            np.random.normal(0, (1-rho**2)/2), 
+                            np.random.normal(0, (1-rho**2)/2))
                           for x in self.rayleigh_bs]
       self.rayleigh_eve = [rho * x + 
                            complex(
-                             np.random.normal((1-rho**2)/2), 
-                             np.random.normal((1-rho**2)/2)) 
+                             np.random.normal(0, (1-rho**2)/2), 
+                             np.random.normal(0, (1-rho**2)/2))
                            for x in self.rayleigh_eve]
 
 
@@ -118,13 +122,16 @@ class Environment:
     user_gains = []
     for user in self.user_coords:
       # path loss model: 128.1 + 37.6*log_10(d) (d is in km)
+      d = dist(ref_point, user) / 1000
       user_path_loss = 128.1 + 37.6 *\
-      log(dist(ref_point, user) / 1000, 10) +\
+      log(d, 10) +\
       np.random.normal(0, self.fade_std)
       
       # convert dB to linear
       # gain = 1 / path loss
       user_gain = np.power(10, -user_path_loss/10)
+      # if ref_point == (0,0):
+      #   print(user, d, user_path_loss, user_gain)
       user_gains.append(user_gain)
     return user_gains
       
@@ -182,9 +189,9 @@ class Environment:
   # FIXME: variable scaling based on expected results
   def get_state(self):
     user_gains_bs = self.get_gains_user_to_ref('bs')
-    user_gains_bs = [x * 10**7 for x in user_gains_bs]
+    user_gains_bs = [np.log(1/x) for x in user_gains_bs]
     user_gains_eve = self.get_gains_user_to_ref('eve')
-    user_gains_eve = [x * 10**10 for x in user_gains_eve]
+    user_gains_eve = [np.log(1/x) for x in user_gains_eve]
     task_sizes = [x / 10**6 for x in self.task_sizes]
     self.state = np.array(tuple(zip(user_gains_bs, user_gains_eve, task_sizes)))
     return np.array(self.state)
@@ -198,18 +205,24 @@ class Environment:
     en_sum = self._energy_sum(action) / self.N_users
 
     max_time = 0
+    cost = 0
     for user in range(self.N_users):
+      _, _, split = self.get_action_k(user, action)
+      cost += split
       offload_time = self._offload_time_k(user, action)
       execution_time = self._execution_time_k(user, action)
       max_time += max(offload_time, execution_time)
     max_time /= self.N_users
+    cost /= self.N_users
 
     qos = self._qos(action)
     w1 = 100
-    w2 = 0
-    penalty = -10
-    cost = w1 * en_sum + w2 * max_time
-    return qos * penalty - cost
+    w2 = 10
+    penalty = -5
+    en_sum = min(en_sum, 1e-2)
+    # cost = np.log(1 + 10000 * en_sum) # + w2 * max_time
+    # cost = en_sum * w1
+    return qos * penalty - cost * 2
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
@@ -225,10 +238,13 @@ class Environment:
 
       p1, p2, split = self.get_action_k(user, action)
       max_time = max(offload_time, execution_time)
-      if split > 0.1 and p1 + p2 < 0.05:
-        res += 1
+      # if offload_time >= T_MAX and split > 0.1:
+      #   res += 1
+      # if split < 0.1:
+      #   res += 1
       if max_time >= T_MAX:
-        res += min(max_time - T_MAX, T_MAX) * 10 + 0.1
+        # res += min(max_time - T_MAX, T_MAX) + 0.1
+        res += 1
 
       self.stats[user]['sec_rate_1'] = sec_data_rate_k_1
       self.stats[user]['sec_rate_2'] = sec_data_rate_k_2
@@ -270,7 +286,7 @@ class Environment:
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
     if sec_data_rate_k > 0:
       offload_time = min(user_split * task_total / (C * sec_data_rate_k), T_MAX)
-      # offload_time = max(offload_time, T_MAX / 5)
+      # offload_time = max(offload_time, T_MAX / 10)
     elif user_split == 0:
       offload_time = 0
     else:
