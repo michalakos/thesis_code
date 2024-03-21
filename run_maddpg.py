@@ -6,7 +6,6 @@ from datetime import datetime
 from constants import *
 from model_utils import save_model, load_model, load_rew_rec
 import os
-import sys
 
 
 load = False
@@ -30,16 +29,12 @@ batch_size = BATCH_SIZE
 n_episode = EPISODES
 max_steps = TIMESLOTS
 episodes_before_train = EPISODES_BEFORE_TRAIN
-tau = float(sys.argv[1])
-critic_lr = float(sys.argv[2])
-actor_lr = float(sys.argv[3])
 
 if load:
     maddpg = load_model(load_path)
     reward_record = load_rew_rec(load_path)
 else:
-    print("Running experiment for tau = {}, actor learning rate = {} and critic learning rate = {}".format(tau, actor_lr, critic_lr))
-    maddpg = MADDPG(n_agents, n_states, n_actions, batch_size, capacity, episodes_before_train, tau, actor_lr, critic_lr)
+    maddpg = MADDPG(n_agents, n_states, n_actions, batch_size, capacity, episodes_before_train, TAU, ACTOR_LR, CRITIC_LR)
 
 FloatTensor = th.cuda.FloatTensor if maddpg.use_cuda else th.FloatTensor
 
@@ -110,8 +105,6 @@ else:
                     print('{:6d}/{:6d}'.format(t+1, TIMESLOTS))
         
         maddpg.episode_done += 1
-        maddpg.std = max(maddpg.std * NOISE_DECAY, 0.05)
-        # maddpg.std = 0.1
         print('Episode: {:3d}, mean reward = {:.3f}, std: {:.3f}'.format(i_episode, total_reward/max_steps, maddpg.std))
         reward_record.append(total_reward/max_steps)
 
