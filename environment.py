@@ -227,8 +227,8 @@ class Environment:
       self.stats[user]['exec_time'] = execution_time
       self.stats[user]['max_time'] = max(offload_time, execution_time)
       self.stats[user]['p1'] = p1 * self._dbm_to_watts(P_MAX)
-      self.stats[user]['p2'] = p2 * (1 - p1) * self._dbm_to_watts(P_MAX)
-      self.stats[user]['P_tot'] = (p1 + p2 * (1 - p1)) * self._dbm_to_watts(P_MAX)
+      self.stats[user]['p2'] = 0
+      self.stats[user]['P_tot'] = p1 * self._dbm_to_watts(P_MAX)
       self.stats[user]['split'] = split
       self.stats[user]['bs_gain'] = user_gains_bs[user]
       self.stats[user]['eve_gain'] = user_gains_eve[user]
@@ -288,8 +288,8 @@ class Environment:
   # return the energy a user requires to offload their task
   def _energy_offload_k(self, k, action):
     offload_time = self._offload_time_k(k, action)
-    user_p_1, user_p_2, _ = self.get_action_k(k, action)
-    user_p_tot = self._dbm_to_watts(P_MAX) * (user_p_1 + user_p_2 * (1 - user_p_1))
+    user_p_1, _user_p_2, _ = self.get_action_k(k, action)
+    user_p_tot = self._dbm_to_watts(P_MAX) * user_p_1
     
     return user_p_tot * offload_time if offload_time <= T_MAX else user_p_tot * T_MAX
   
@@ -304,37 +304,24 @@ class Environment:
     channel_bs, channel_eve, _ = self.get_state_k(k)
 
     user_p1 = self._dbm_to_watts(P_MAX) * p1_r
-    user_p2 = self._dbm_to_watts(P_MAX) * p2_r * (1 - p1_r)
+    user_p2 = 0
     noise = self._dbm_to_watts(NOISE_STD)
 
     # calculate first message's achievable rate of decoding at BS
     bs_interference = self._interference_bs_k(k, action)
     log_arg = 1 + channel_bs * user_p1 / \
-        (bs_interference + channel_bs * user_p2 + noise * B)
+        (bs_interference + noise * B)
     rate_bs_1 = B * log(log_arg, 2)
 
     # calculate first message's achievable rate of decoding at eavesdropper
     eve_interference = self._interference_eve_k(k, action)
     log_arg = 1 + channel_eve * user_p1 / \
-        (eve_interference + channel_eve * user_p2 + noise * B)
+        (eve_interference + noise * B)
     rate_eve_1 = B * log(log_arg, 2)
 
     secure_data_rate_1 = max(0, rate_bs_1 - rate_eve_1)   # first message
 
-    # calculate second message's achievable rates
-    # base station
-    log_arg = 1 + channel_bs * user_p2 / \
-        (bs_interference + noise * B)
-    rate_bs_2 = B * log(log_arg, 2)
-
-    # eavesdropper
-    log_arg = 1 + channel_eve * user_p2 / \
-        (eve_interference + channel_eve * user_p1 + noise * B)
-    rate_eve_2 = B * log(log_arg, 2)
-
-    secure_data_rate_2 = max(0, rate_bs_2 - rate_eve_2)   # second message
-
-    return secure_data_rate_1, secure_data_rate_2
+    return secure_data_rate_1, 0
 
 
   # calculate the interference to the BS for a user's signal
@@ -348,9 +335,8 @@ class Environment:
     for user in decoding_order[k_dec_order + 1:]:
       p1_r, p2_r, _ = self.get_action_k(user, action)
       user_p1 = self._dbm_to_watts(P_MAX) * p1_r
-      user_p2 = self._dbm_to_watts(P_MAX) * p2_r * (1 - p1_r)
       channel_bs, _, _ = self.get_state_k(user)
-      interference += (user_p1 + user_p2) * channel_bs
+      interference += user_p1 * channel_bs
     return interference
 
 
@@ -362,9 +348,8 @@ class Environment:
         continue
       p_1, p_2, _ = self.get_action_k(user, action)
       user_p1 = self._dbm_to_watts(P_MAX) * p_1
-      user_p2 = self._dbm_to_watts(P_MAX) * p_2 * (1 - p_1)
       _, channel_eve, _ = self.get_state_k(user)
-      interference += (user_p1 + user_p2) * channel_eve
+      interference += user_p1 * channel_eve
       
     return interference
 
