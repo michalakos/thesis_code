@@ -1,7 +1,7 @@
 import numpy as np
 
 
-NUM_USERS = 3         # (edge users)
+NUM_USERS = 4         # (edge users)
 X_LENGTH = 500       # m (horizontal length of area)
 Y_LENGTH = 500        # m (vertical length of area)
 
@@ -17,7 +17,7 @@ T_MAX = 0.1           # sec (time threshold)
 DATA_SIZE = 1e6
 
 STATE_DIM = 3         # bs_channel, eve_channel, task_size
-ACTION_DIM = 3        # p_total_ratio, p1_ratio, task_size_ratio
+ACTION_DIM = 2        # p_total_ratio, p1_ratio, task_size_ratio
 EPISODES = 3000
 TIMESLOTS = 300
 EPISODES_BEFORE_TRAIN = 10
