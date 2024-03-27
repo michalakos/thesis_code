@@ -1,7 +1,7 @@
 import numpy as np
 
 
-NUM_USERS = 4         # (edge users)
+NUM_USERS = 3         # (edge users)
 X_LENGTH = 500       # m (horizontal length of area)
 Y_LENGTH = 500        # m (vertical length of area)
 
@@ -29,4 +29,5 @@ GAMMA = 0.99
 TAU = 1e-5
 ACTOR_LR = 1e-5
 CRITIC_LR = 1e-4
+RATE_MIN = 1.5 * DATA_SIZE / (C * T_MAX * B)
 PATH = '/home/michalakos/Documents/Thesis/training_results'

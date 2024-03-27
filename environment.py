@@ -129,7 +129,6 @@ class Environment:
     self._set_rayleigh()
     user_gains_bs = self.get_gains_user_to_ref('bs')
     user_gains_eve = self.get_gains_user_to_ref('eve')
-    self.dec_order = sorted(range(self.N_users), key=lambda k: user_gains_bs[k], reverse=True)
     self.state = np.array(tuple(zip(user_gains_bs, user_gains_eve, self.task_sizes)))
 
     return self.state
@@ -169,6 +168,19 @@ class Environment:
     task_sizes = [x / DATA_SIZE for x in self.task_sizes]
     self.state = np.array(tuple(zip(user_gains_bs, user_gains_eve, task_sizes)))
     return np.array(self.state)
+  
+
+  def get_dec_order(self, action):
+    o = []
+    for user_k in range(self.N_users):
+      g_k, _, _ = self.get_state_k(user_k)
+      _, split = self.get_action_k(user_k, action)
+      denom = 2 ** (split * RATE_MIN) + 1
+      o_k = (g_k ** 2) * (1 + 1 / denom)
+      o.append(o_k)
+    
+    dec_order = sorted(range(self.N_users), key=lambda k: o[k], reverse=True)
+    return dec_order
 
 
   # calculate reward
@@ -176,6 +188,7 @@ class Environment:
   # QoS ranges from 0 (all requirements met)
   # to 1 (no requirement met)
   def _reward(self, action):
+    self.dec_order = self.get_dec_order(action)
     en_sum = self._energy_sum(action) / self.N_users
 
     max_time = 0
