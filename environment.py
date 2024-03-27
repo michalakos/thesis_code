@@ -20,14 +20,10 @@ class Environment:
     for _ in range(self.N_users):
       user_dict = {
         "sec_rate_1": None,
-        "sec_rate_2": None,
-        "sec_rate_sum": None,
         "off_time": None,
         "exec_time": None,
         "max_time": None,
         "p1": None,
-        "p2": None,
-        "P_tot": None,
         'split': None,
         "E_off": None,
         "E_exec": None,
