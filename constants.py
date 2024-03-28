@@ -29,4 +29,5 @@ GAMMA = 0.99
 TAU = 1e-5
 ACTOR_LR = 1e-5
 CRITIC_LR = 1e-4
+RATE_MIN = 1.5 * DATA_SIZE / (C * T_MAX * B)
 PATH = '/home/michalakos/Documents/Thesis/training_results'
