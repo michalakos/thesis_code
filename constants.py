@@ -1,7 +1,3 @@
-import numpy as np
-
-
-NUM_USERS = 4         # (edge users)
 X_LENGTH = 500       # m (horizontal length of area)
 Y_LENGTH = 500        # m (vertical length of area)
 
@@ -21,13 +17,14 @@ ACTION_DIM = 3        # p_total_ratio, p1_ratio, task_size_ratio
 EPISODES = 3000
 TIMESLOTS = 300
 EPISODES_BEFORE_TRAIN = 10
-BETA = 10            # number of steps required to update local networks
-CAPACITY = 2e6
-BATCH_SIZE = 32
-SCALE_REWARD = 1
 GAMMA = 0.99
-TAU = 1e-5
-ACTOR_LR = 1e-5
-CRITIC_LR = 1e-4
 RATE_MIN = 1.5 * DATA_SIZE / (C * T_MAX * B)
 PATH = '/home/michalakos/Documents/Thesis/training_results'
+
+NUM_USERS = 3         # (edge users)
+ACTOR_LR = 1e-5
+CRITIC_LR = 1e-4
+BATCH_SIZE = 32
+BETA = 10            # number of steps required to update local networks
+TAU = 1e-5
+CAPACITY = 2e6
