@@ -5,7 +5,7 @@ from memory import ReplayMemory, Experience
 import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
-from constants import TIMESLOTS, GAMMA
+from constants import BETA, TIMESLOTS, GAMMA
 
 def soft_update(target, source, t):
   for target_param, source_param in zip(target.parameters(), source.parameters()):
@@ -19,7 +19,7 @@ def hard_update(target, source):
 
 class MADDPG:
   def __init__(self, n_agents, dim_obs, dim_act, batch_size,
-      capacity, episodes_before_train, tau, actor_lr, critic_lr, beta):
+      capacity, episodes_before_train, tau, actor_lr, critic_lr):
 
     self.actors = [Actor(dim_obs, dim_act) for _ in range(n_agents)]
     self.critics = [Critic(n_agents, dim_obs, dim_act) for _ in range(n_agents)]
@@ -35,7 +35,6 @@ class MADDPG:
     self.use_cuda = th.cuda.is_available()
     self.episodes_before_train = episodes_before_train
     self.tau = tau
-    self.beta = beta
 
     self.std = 0.1
     self.critic_optimizer = [Adam(x.parameters(), lr=critic_lr) for x in self.critics]
@@ -124,7 +123,7 @@ class MADDPG:
       soft_update(self.critics_target[i], self.critics[i], self.tau)
       soft_update(self.actors_target[i], self.actors[i], self.tau)
 
-    if self.steps_done % self.beta == 0 and self.steps_done > 0:
+    if self.steps_done % BETA == 0 and self.steps_done > 0:
       for i in range(self.n_agents):
         hard_update(self.local_actors[i], self.actors[i])
 

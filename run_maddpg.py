@@ -6,52 +6,6 @@ from datetime import datetime
 from constants import *
 from model_utils import save_model, load_model, load_rew_rec
 import os
-import sys
-
-
-NUM_USERS = 4
-BATCH_SIZE = 32
-CAPACITY = 2e6
-BETA = 10
-ACTOR_LR = 1e-5
-CRITIC_LR = 1e-4
-TAU = 1e-5
-
-# specify configuration to run
-if len(sys.argv) > 1:
-    conf_no = int(sys.argv[1])
-    print("Running configuration no{}".format(conf_no))
-else:
-    print("No arguments passed.")
-    exit
-
-
-if conf_no == 0:
-    NUM_USERS = 2
-elif conf_no == 1:
-    NUM_USERS = 6
-elif conf_no == 2:
-    BATCH_SIZE = 4
-elif conf_no == 3:
-    BATCH_SIZE = 256
-elif conf_no == 4:
-    CAPACITY = 1e4
-elif conf_no == 5:
-    BETA = 1
-elif conf_no == 6:
-    BETA = 300
-elif conf_no == 7:
-    ACTOR_LR = 5e-5
-    CRITIC_LR = 1e-4
-elif conf_no == 8:
-    ACTOR_LR = 1e-5
-    CRITIC_LR = 5e-5
-elif conf_no == 9:
-    TAU = 5e-6
-elif conf_no == 10:
-    TAU = 5e-5
-else:
-    print("Running default configuration")
 
 
 load = False
@@ -59,26 +13,30 @@ evaluate = False
 
 path = PATH + '/maddpg'
 path = '{}/{}'.format(path, datetime.now())
-load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg'
+load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-06 09:29:36.516230/ep_500'
 if not os.path.exists(path):
     os.makedirs(path)
 
 
+env = Environment()
+reward_record = []
+
+n_agents = NUM_USERS
+n_states = STATE_DIM
+n_actions = ACTION_DIM
+capacity = CAPACITY
+batch_size = BATCH_SIZE
 n_episode = EPISODES
 max_steps = TIMESLOTS
-
-
-env = Environment(NUM_USERS, X_LENGTH, Y_LENGTH, FADE_STD, False)
-
+episodes_before_train = EPISODES_BEFORE_TRAIN
 
 if load:
     maddpg = load_model(load_path)
     reward_record = load_rew_rec(load_path)
 else:
-    maddpg = MADDPG(NUM_USERS, STATE_DIM, ACTION_DIM, BATCH_SIZE, CAPACITY, EPISODES_BEFORE_TRAIN, TAU, ACTOR_LR, CRITIC_LR, BETA)
+    maddpg = MADDPG(n_agents, n_states, n_actions, batch_size, capacity, episodes_before_train, TAU, ACTOR_LR, CRITIC_LR)
 
 FloatTensor = th.cuda.FloatTensor if maddpg.use_cuda else th.FloatTensor
-reward_record = []
 
 if evaluate:
     for i_episode in range(1, 11):
@@ -105,7 +63,6 @@ if evaluate:
         print('Mean reward = {}'.format(total_reward/max_steps))
         
 else:
-    start_time = datetime.now()
     starting_episode = maddpg.episode_done + 1
     for i_episode in range(starting_episode, n_episode + 1):
         obs = env.reset()
@@ -148,19 +105,13 @@ else:
                     print('{:6d}/{:6d}'.format(t+1, TIMESLOTS))
         
         maddpg.episode_done += 1
-        print('Episode: {:3d}, mean reward = {:.3f}'.format(i_episode, total_reward/max_steps))
+        print('Episode: {:3d}, mean reward = {:.3f}, std: {:.3f}'.format(i_episode, total_reward/max_steps, maddpg.std))
         reward_record.append(total_reward/max_steps)
 
         if maddpg.episode_done == maddpg.episodes_before_train:
             print('Training now begins...')
 
-        if i_episode % 1000 == 0:
+        if i_episode % 500 == 0:
             save_model(path, maddpg, i_episode, reward_record)
-    if i_episode % 1000 != 0:
+    if i_episode % 500 != 0:
         save_model(path, maddpg, i_episode, reward_record)
-
-    end_time = datetime.now()
-    elapsed_time = end_time - start_time
-    print("Elapsed time:", elapsed_time)
-    with open(path+'/time.txt', 'w') as f:
-        print(elapsed_time, file=f)
