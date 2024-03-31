@@ -1,16 +1,15 @@
-from random import randint, choice
+from random import randint
 from math import dist, log
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import j0
-from constants import *
 from itertools import product
+from constants import DOPPLER_FREQ, T_MAX, DATA_SIZE, RATE_MIN, P_MAX, FREQUENCY, C, C_COEFF, NOISE_STD, B
 
 
 class Environment:
   # create an instance of Env
-  def __init__(self, N_users=NUM_USERS, x_length=X_LENGTH, y_length=Y_LENGTH,
-               fade_std=FADE_STD, discreet=False):
+  def __init__(self, N_users, x_length, y_length, fade_std, discreet):
     self.N_users = N_users
     self.x_length = x_length
     self.y_length = y_length

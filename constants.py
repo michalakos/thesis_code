@@ -21,10 +21,10 @@ GAMMA = 0.99
 RATE_MIN = 1.5 * DATA_SIZE / (C * T_MAX * B)
 PATH = '/home/michalakos/Documents/Thesis/training_results'
 
-NUM_USERS = 3         # (edge users)
-ACTOR_LR = 1e-5
-CRITIC_LR = 1e-4
-BATCH_SIZE = 32
-BETA = 10            # number of steps required to update local networks
-TAU = 1e-5
-CAPACITY = 2e6
+# NUM_USERS = 3         # (edge users)
+# ACTOR_LR = 1e-5
+# CRITIC_LR = 1e-4
+# BATCH_SIZE = 32
+# BETA = 10            # number of steps required to update local networks
+# TAU = 1e-5
+# CAPACITY = 2e6
