@@ -36,7 +36,6 @@ class MADDPG:
     self.episodes_before_train = episodes_before_train
     self.tau = tau
 
-    # self.var = [1.0 for _ in range(n_agents)]
     self.std = 0.1
     self.critic_optimizer = [Adam(x.parameters(), lr=critic_lr) for x in self.critics]
     self.actor_optimizer = [Adam(x.parameters(), lr=actor_lr) for x in self.actors]

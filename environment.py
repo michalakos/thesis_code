@@ -1,4 +1,4 @@
-from random import randint, choice
+from random import randint
 from math import dist, log
 import numpy as np
 import matplotlib.pyplot as plt
@@ -58,8 +58,6 @@ class Environment:
 
     # randomly place users in grid
     self.user_coords = []
-    # tmp_users = []
-    sign = [-1, 1]
     for i in range(self.N_users):
       # multiply and divide by 100 to have two decimal points
       user = (randint(-self.x_length/2*100, self.x_length/2*100)/100,
@@ -147,7 +145,7 @@ class Environment:
 
 
   # get user k's information from state
-  # returns tuple (h_k_BS, h_k_eve, S_k, order_k)
+  # returns tuple (h_k_BS, h_k_eve, S_k)
   def get_state_k(self, k):
     user_gain_bs = abs(self.rayleigh_bs[k])**2 * self.block_fade_bs[k]
     user_gain_eve = abs(self.rayleigh_eve[k])**2 * self.block_fade_eve[k]

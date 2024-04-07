@@ -3,7 +3,7 @@ import json
 STEPS = 40
 num_users = 4
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-03-21 17:25:03.227117/logs.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-04-05 14:16:13.361043/logs.txt'
 
 values_dict = {
   0: 'sec_rate_1', 
@@ -60,7 +60,7 @@ for tag in range(len(values_dict)):
 
       if '{' in line:
       # this line contains a log, there are #num_users logs for each timestamp
-      # and 2 timestamps for each epoch
+      # and TIMESLOTS/100 timestamps for each epoch
         log = json.loads(line)
         plot_values[cur_user].append(log[plotting_value])
         cur_user += 1
