@@ -210,9 +210,9 @@ class Environment:
 
     qos = self._qos(action)
     w1 = 200
-    penalty = -5
+    penalty = 5
     cost = en_sum * w1
-    return qos * penalty - cost
+    return - (qos * penalty + cost)
 
 
   # quality of service indicator, ranges from 0 (bad) to 1 (great)
