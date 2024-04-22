@@ -3,7 +3,7 @@ import json
 STEPS = 40
 num_users = 4
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-04-05 14:16:13.361043/logs.txt'
+file = '/home/michalakos/Documents/Thesis/thesis_notes/experiments/base.txt'
 
 values_dict = {
   0: 'sec_rate_1', 
@@ -47,6 +47,23 @@ titles = {
   # 17: 'Channel Gain to Eavesdropper',
 }
 
+y_labels = {
+  0: 'Mbps',
+  1: 'Mbps',
+  2: 'Mbps',
+  3: 'sec',
+  4: 'sec',
+  5: 'sec',
+  6: 'Watt',
+  7: 'Watt',
+  8: 'Watt',
+  9: '',
+  10: 'Joule',
+  11: 'Joule',
+  12: 'Joule',
+  13: '',
+}
+
 
 cur_user = 0
 for tag in range(len(values_dict)):
@@ -78,13 +95,17 @@ for tag in range(len(values_dict)):
       if index % STEPS == 0:
         x.append(cum_sum/STEPS)
         cum_sum = 0
+    if tag < 3:
+      x = [item/10**6 for item in x]
+
     if values_dict[tag] == 'reward':
       plt.plot(x, color='black')
     else:
       plt.plot(x, label='User {}'.format(user))
     plt.title(titles[tag])
-    plt.xlabel('Timesteps (sampled every 100)')
-    plt.ylabel('Mean of {} timesteps'.format(STEPS))
+    plt.xlabel('Sample batch')
+    # plt.ylabel('Mean of {} timesteps'.format(STEPS))
+    plt.ylabel(y_labels[tag])
     if values_dict[tag] != 'reward':
       plt.legend()
   plt.show()
