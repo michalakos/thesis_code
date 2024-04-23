@@ -8,12 +8,12 @@ from model_utils import save_model, load_model, load_rew_rec
 import os
 
 
-load = False
-evaluate = False
+load = True
+evaluate = True
 
 path = PATH + '/maddpg'
 path = '{}/{}'.format(path, datetime.now())
-load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2023-12-06 09:29:36.516230/ep_500'
+load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-03-28 09:21:44.649247/ep_3000'
 if not os.path.exists(path):
     os.makedirs(path)
 
@@ -39,7 +39,7 @@ else:
 FloatTensor = th.cuda.FloatTensor if maddpg.use_cuda else th.FloatTensor
 
 if evaluate:
-    for i_episode in range(1, 11):
+    for i_episode in range(1, 101):
         obs = env.reset()
         obs = env.get_state()
         obs = np.stack(obs)
@@ -59,9 +59,19 @@ if evaluate:
                 next_obs = None
             total_reward += reward.sum()
             obs = next_obs
-            print(env.get_stats())
-        print('Mean reward = {}'.format(total_reward/max_steps))
-        
+            # print(env.get_stats())
+            
+            if (t+1)%100 == 0:
+                    episode_stats = env.get_stats()
+                    with open(path+'/eval_logs.txt', 'a') as f:
+                        print('{}/{}\t{}/{}'.format(t+1, max_steps, i_episode, n_episode), file=f)
+                        for i, user_stats in enumerate(episode_stats):
+                            tmp_stats = user_stats.copy()
+                            tmp_stats['a_loss'] = 0
+                            tmp_stats['c_loss'] = 0
+                            print(tmp_stats, file=f)
+                        print('\n', file=f)
+        print('Mean reward = {}'.format(total_reward/max_steps))        
 else:
     starting_episode = maddpg.episode_done + 1
     for i_episode in range(starting_episode, n_episode + 1):

@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 import json
+EVAL = False
 STEPS = 40
 num_users = 4
 
-file = '/home/michalakos/Documents/Thesis/thesis_notes/experiments/base.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-04-23 10:06:49.246014/logs.txt'
 
 values_dict = {
   0: 'sec_rate_1', 
@@ -85,27 +86,37 @@ for tag in range(len(values_dict)):
       # this line denotes a new timestamp
         cur_user = 0
 
-  for user in range(num_users):
-    cum_sum = 0
-    index = 0
-    x = []
-    for i in plot_values[user]:
-      index += 1
-      cum_sum += i
-      if index % STEPS == 0:
-        x.append(cum_sum/STEPS)
-        cum_sum = 0
-    if tag < 3:
-      x = [item/10**6 for item in x]
+  if EVAL:
+    for user in range(num_users):
+      sum = 0
+      for i in plot_values[user]:
+        sum += i
+    sum /= len(plot_values[0])
+    print('Mean sum in 100 episodes for {}: {}'.format(values_dict[tag], sum))
+    print('Mean average in 100 episodes for {}: {}'.format(values_dict[tag], sum/num_users))
 
-    if values_dict[tag] == 'reward':
-      plt.plot(x, color='black')
-    else:
-      plt.plot(x, label='User {}'.format(user))
-    plt.title(titles[tag])
-    plt.xlabel('Sample batch')
-    # plt.ylabel('Mean of {} timesteps'.format(STEPS))
-    plt.ylabel(y_labels[tag])
-    if values_dict[tag] != 'reward':
-      plt.legend()
-  plt.show()
+  else:
+    for user in range(num_users):
+      cum_sum = 0
+      index = 0
+      x = []
+      for i in plot_values[user]:
+        index += 1
+        cum_sum += i
+        if index % STEPS == 0:
+          x.append(cum_sum/STEPS)
+          cum_sum = 0
+      if tag < 3:
+        x = [item/10**6 for item in x]
+
+      if values_dict[tag] == 'reward':
+        plt.plot(x, color='black')
+      else:
+        plt.plot(x, label='User {}'.format(user))
+      plt.title(titles[tag])
+      plt.xlabel('Sample batch')
+      # plt.ylabel('Mean of {} timesteps'.format(STEPS))
+      plt.ylabel(y_labels[tag])
+      if values_dict[tag] != 'reward':
+        plt.legend()
+    plt.show()
