@@ -1,7 +1,7 @@
 import numpy as np
 
 
-NUM_USERS = 3         # (edge users)
+NUM_USERS = 4         # (edge users)
 X_LENGTH = 500       # m (horizontal length of area)
 Y_LENGTH = 500        # m (vertical length of area)
 
