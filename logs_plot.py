@@ -4,7 +4,7 @@ EVAL = False
 STEPS = 40
 num_users = 4
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-04-23 10:06:49.246014/logs.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-04-23 18:09:20.928467/logs.txt'
 
 values_dict = {
   0: 'sec_rate_1', 

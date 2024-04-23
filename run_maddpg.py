@@ -48,7 +48,7 @@ if evaluate:
         total_reward = 0.0
         for t in range(max_steps):
             obs = obs.type(FloatTensor)
-            action = maddpg.select_action(obs).data.cpu()
+            action = maddpg.select_action(obs, evaluate).data.cpu()
             obs_, reward = env.step(action.numpy())
             reward = th.FloatTensor([reward]).type(FloatTensor)
             obs_ = np.stack(obs_)
@@ -59,7 +59,6 @@ if evaluate:
                 next_obs = None
             total_reward += reward.sum()
             obs = next_obs
-            # print(env.get_stats())
             
             if (t+1)%100 == 0:
                     episode_stats = env.get_stats()

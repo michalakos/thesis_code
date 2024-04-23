@@ -129,7 +129,7 @@ class MADDPG:
 
     return c_loss, a_loss
 
-  def select_action(self, state_batch):
+  def select_action(self, state_batch, eval=False):
     # state_batch: n_agents x state_dim
     actions = th.zeros(self.n_agents, self.n_actions)
     FloatTensor = th.cuda.FloatTensor if self.use_cuda else th.FloatTensor
@@ -138,8 +138,9 @@ class MADDPG:
       act = self.local_actors[i](sb.unsqueeze(0)).squeeze()
 
       noise = np.random.normal(0, self.std, self.n_actions)
-      act += th.from_numpy(noise).type(FloatTensor)
-      act = th.clamp(act, 0, 1.0)
+      if not eval:
+        act += th.from_numpy(noise).type(FloatTensor)
+        act = th.clamp(act, 0, 1.0)
 
       actions[i, :] = act
     self.steps_done += 1
