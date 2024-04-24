@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import json
 STEPS = 40
-EVAL = True
+EVAL = False
 num_users = 4
 
-file = '/home/michalakos/Documents/Thesis/training_results/maddpg_noma/2024-04-23 21:29:51.754489/eval_logs.txt'
+file = '/home/michalakos/Documents/Thesis/training_results/maddpg_noma/2024-04-24 23:03:16.561715/logs.txt'
 
 values_dict = {
   0: 'sec_rate_1',
@@ -62,12 +62,11 @@ for tag in range(len(values_dict)):
         cur_user = 0
 
   if EVAL:
+    sum = 0
     for user in range(num_users):
-      sum = 0
       for i in plot_values[user]:
         sum += i
     sum /= len(plot_values[0])
-    print('Mean sum in 100 episodes for {}: {}'.format(values_dict[tag], sum))
     print('Mean average in 100 episodes for {}: {}'.format(values_dict[tag], sum/num_users))
 
       
