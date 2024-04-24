@@ -13,7 +13,7 @@ evaluate = True
 
 path = PATH + '/maddpg'
 path = '{}/{}'.format(path, datetime.now())
-load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-03-28 09:21:44.649247/ep_3000'
+load_path = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-04-24 11:13:25.471762/ep_5000'
 if not os.path.exists(path):
     os.makedirs(path)
 

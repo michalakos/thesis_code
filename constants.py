@@ -15,7 +15,7 @@ DATA_SIZE = 1e6
 
 STATE_DIM = 3         # bs_channel, eve_channel, task_size
 ACTION_DIM = 3        # p_total_ratio, p1_ratio, task_size_ratio
-EPISODES = 3000
+EPISODES = 5000
 TIMESLOTS = 300
 EPISODES_BEFORE_TRAIN = 10
 BETA = 10            # number of steps required to update local networks
