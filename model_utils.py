@@ -2,6 +2,7 @@ import os
 import pickle
 
 
+# saves model as pickle object
 def save_model(path, model, episode, reward_record):
     print("Saving model at episode {}".format(model.episode_done))
 
@@ -19,6 +20,7 @@ def save_model(path, model, episode, reward_record):
         pickle.dump(model, f, pickle.HIGHEST_PROTOCOL)
 
 
+# load system model (maddpg class)
 def load_model(path):
     model_file = '{}/maddpg.pkl'.format(path)
     with open(model_file, 'rb') as f:
@@ -27,6 +29,7 @@ def load_model(path):
     return model
 
 
+# load reward record
 def load_rew_rec(path):
     record_file = '{}/reward_record.txt'.format(path)
     

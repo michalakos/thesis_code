@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
 import json
 EVAL = True
-STEPS = 40
 num_users = 4
-
+# plot mean of STEPS timeslots
+STEPS = 40
+# log file location
 file = '/home/michalakos/Documents/Thesis/training_results/maddpg/2024-04-24 14:16:43.194933/eval_logs.txt'
 
+# values for plotting as appearing in log file
 values_dict = {
   0: 'sec_rate_1', 
   1: 'sec_rate_2', 
@@ -27,6 +29,7 @@ values_dict = {
   # 17: 'eve_gain',
   }
 
+# plot names
 titles = {
   0: 'Secure Data Rate (1)', 
   1: 'Secure Data Rate (2)', 
@@ -48,6 +51,7 @@ titles = {
   # 17: 'Channel Gain to Eavesdropper',
 }
 
+# unit of measured value
 y_labels = {
   0: 'Mbps',
   1: 'Mbps',
@@ -67,10 +71,12 @@ y_labels = {
 
 
 cur_user = 0
+# plot each log value
 for tag in range(len(values_dict)):
   plotting_value = values_dict[tag]
   plot_values = [[] for _ in range(num_users)]
 
+  # read this value's measurements for each user
   lines = []
   with open(file, 'r') as f:
     for line in f:
@@ -86,6 +92,7 @@ for tag in range(len(values_dict)):
       # this line denotes a new timestamp
         cur_user = 0
 
+  # in evaluation only return mean of measurements - not plot
   if EVAL:
     sum = 0
     for user in range(num_users):
@@ -94,7 +101,9 @@ for tag in range(len(values_dict)):
     sum /= len(plot_values[0])
     print('Mean average in 100 episodes for {}: {}'.format(values_dict[tag], sum/num_users))
 
+  # plot each value
   else:
+    # all users' plots in one figure
     for user in range(num_users):
       cum_sum = 0
       index = 0
@@ -114,8 +123,9 @@ for tag in range(len(values_dict)):
         plt.plot(x, label='User {}'.format(user))
       plt.title(titles[tag])
       plt.xlabel('Sample batch')
-      # plt.ylabel('Mean of {} timesteps'.format(STEPS))
       plt.ylabel(y_labels[tag])
+
+      # reward only has one plot - it's the same for all users
       if values_dict[tag] != 'reward':
         plt.legend()
     plt.show()

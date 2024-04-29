@@ -77,6 +77,7 @@ class Environment:
     return self.stats
   
 
+  # sets rayleigh fading factor
   def _set_rayleigh(self, init=False):
     if init:
       self.rayleigh_bs = [
@@ -121,6 +122,7 @@ class Environment:
     return user_gains
       
     
+  # returns channel gains to reference point (base station or eavesdropper)
   def get_gains_user_to_ref(self, ref):
     channel_gains = []
     for user in range(self.N_users):
@@ -132,7 +134,7 @@ class Environment:
     return channel_gains
 
 
-  # get new tasks
+  # update task sizes (get new tasks)
   # return new state
   def _state_update(self):
     self.task_sizes = [int(np.random.uniform(DATA_SIZE, DATA_SIZE * 1.5)) for _ in range(self.N_users)]
@@ -180,6 +182,7 @@ class Environment:
     return np.array(self.state)
   
   
+  # calculate and return decoding order
   def get_dec_order(self, action):
     o = []
     for user_k in range(self.N_users):
@@ -193,7 +196,7 @@ class Environment:
     return dec_order
 
 
-  # calculate reward
+  # calculate and return reward
   # the model tries to maximize the reward and we try to minimize the energy consumption
   # QoS ranges from 0 (all requirements met)
   # to 1 (no requirement met)
@@ -215,7 +218,7 @@ class Environment:
     return - (qos * penalty + cost)
 
 
-  # quality of service indicator, ranges from 0 (bad) to 1 (great)
+  # quality of service indicator, ranges from 0 (great) to 1 (terrible)
   def _qos(self, action):
     res = 0
     user_gains_bs = self.get_gains_user_to_ref('bs')
@@ -269,10 +272,14 @@ class Environment:
     # calculate the required time for offloading
     sec_data_rate_k_1, sec_data_rate_k_2 = self._secure_data_rate_k(k, action)
     sec_data_rate_k = sec_data_rate_k_1 + sec_data_rate_k_2
+    
+    # offload can't continue after timeslot expires
     if sec_data_rate_k > 0:
       offload_time = min(user_split * task_total / (C * sec_data_rate_k), T_MAX)
+    # no offloading happens
     elif user_split == 0:
       offload_time = 0
+    # control - shouldn't happen
     else:
       offload_time = T_MAX
 

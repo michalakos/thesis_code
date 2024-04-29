@@ -11,6 +11,7 @@ class ReplayMemory:
     self.position = 0
 
 
+  # add to memory
   def push(self, *args):
     if len(self.memory) < self.capacity:
       self.memory.append(None)
@@ -18,6 +19,7 @@ class ReplayMemory:
     self.position = int((self.position + 1) % self.capacity)
 
 
+  # return batch_size random samples
   def sample(self, batch_size):
     return random.sample(self.memory, batch_size)
 

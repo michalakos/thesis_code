@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+# critic network
 class Critic(nn.Module):
   def __init__(self, n_agent, dim_observation, dim_action):
     super(Critic, self).__init__()
@@ -24,6 +25,7 @@ class Critic(nn.Module):
     return self.FC3(result)
 
 
+# actor network
 class Actor(nn.Module):
   def __init__(self, dim_observation, dim_action):
     super(Actor, self).__init__()

@@ -7,6 +7,7 @@ from torch.optim import Adam
 import numpy as np
 from constants import BETA, TIMESLOTS, GAMMA, SCALE_REWARD
 
+
 def soft_update(target, source, t):
   for target_param, source_param in zip(target.parameters(), source.parameters()):
     target_param.data.copy_((1 - t) * target_param.data + t * source_param.data)
@@ -17,26 +18,31 @@ def hard_update(target, source):
     target_param.data.copy_(source_param.data)
 
 
+# class for maddpg system
 class MADDPG:
   def __init__(self, n_agents, dim_obs, dim_act, batch_size,
       capacity, episodes_before_train, tau, actor_lr, critic_lr):
 
     self.actors = [Actor(dim_obs, dim_act) for _ in range(n_agents)]
     self.critics = [Critic(n_agents, dim_obs, dim_act) for _ in range(n_agents)]
+    # mobile users' local networks
     self.local_actors = [Actor(dim_obs, dim_act) for _ in range(n_agents)]
+    # target networks
     self.actors_target = deepcopy(self.actors)
     self.critics_target = deepcopy(self.critics)
 
     self.n_agents = n_agents
     self.n_states = dim_obs
     self.n_actions = dim_act
-    self.memory = ReplayMemory(capacity)
     self.batch_size = batch_size
     self.use_cuda = th.cuda.is_available()
     self.episodes_before_train = episodes_before_train
     self.tau = tau
-
     self.std = 0.1
+
+    # initialize memory
+    self.memory = ReplayMemory(capacity)
+    # initialize optimizers for actor and critic networks
     self.critic_optimizer = [Adam(x.parameters(), lr=critic_lr) for x in self.critics]
     self.actor_optimizer = [Adam(x.parameters(), lr=actor_lr) for x in self.actors]
 
@@ -54,6 +60,7 @@ class MADDPG:
     self.episode_done = 0
 
 
+  # train actor and critic networks
   def update_policy(self):
     # do not train until exploration is enough
     if self.episode_done < self.episodes_before_train:
@@ -68,6 +75,7 @@ class MADDPG:
 
     c_loss = []
     a_loss = []
+    # train each agent independently
     for agent in range(self.n_agents):
       transitions = self.memory.sample(self.batch_size)
       batch = Experience(*zip(*transitions))
@@ -119,29 +127,35 @@ class MADDPG:
       c_loss.append(loss_Q)
       a_loss.append(actor_loss)
 
+    # update target networks
     for i in range(self.n_agents):
       soft_update(self.critics_target[i], self.critics[i], self.tau)
       soft_update(self.actors_target[i], self.actors[i], self.tau)
 
+    # update local networks every BETA steps
     if self.steps_done % BETA == 0 and self.steps_done > 0:
       for i in range(self.n_agents):
         hard_update(self.local_actors[i], self.actors[i])
 
     return c_loss, a_loss
 
+  # get actions from local actors based on current state
   def select_action(self, state_batch, eval=False):
     # state_batch: n_agents x state_dim
     actions = th.zeros(self.n_agents, self.n_actions)
     FloatTensor = th.cuda.FloatTensor if self.use_cuda else th.FloatTensor
+
+    # each user decides his own action independently
     for i in range(self.n_agents):
       sb = state_batch[i, :].detach()
       act = self.local_actors[i](sb.unsqueeze(0)).squeeze()
 
-      noise = np.random.normal(0, self.std, self.n_actions)
+      # while training add noise to the actions for better exploration
       if not eval:
+        noise = np.random.normal(0, self.std, self.n_actions)
         act += th.from_numpy(noise).type(FloatTensor)
         act = th.clamp(act, 0, 1.0)
-
+      # compile all actions into one
       actions[i, :] = act
     self.steps_done += 1
 
